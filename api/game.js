@@ -1,4 +1,4 @@
-// api/game.js - Version avec statut qui fonctionne
+// api/game.js - Avec persistance mémoire + logs
 const games = new Map();
 
 export default function handler(req, res) {
@@ -30,8 +30,12 @@ export default function handler(req, res) {
             currentPlayer: 'red',
             players: ['red'],
             status: 'waiting',
-            winner: null
+            winner: null,
+            lastMove: null,
+            createdAt: Date.now()
         });
+        
+        console.log('Partie créée:', gameId, 'Total parties:', games.size);
         
         const game = games.get(gameId);
         return res.status(200).json({
@@ -53,6 +57,7 @@ export default function handler(req, res) {
         const game = games.get(id);
         
         if (!game) {
+            console.log('Partie non trouvée:', id);
             return res.status(404).json({ success: false, error: 'Partie non trouvée' });
         }
         
@@ -60,9 +65,10 @@ export default function handler(req, res) {
             return res.status(400).json({ success: false, error: 'Partie complète' });
         }
         
-        // Ajouter le joueur jaune
         game.players.push('yellow');
-        game.status = 'playing'; // ← CRUCIAL: passer en "playing" immédiatement
+        game.status = 'playing';
+        
+        console.log('Joueur rejoint:', id, 'Joueurs:', game.players);
         
         return res.status(200).json({
             success: true,
@@ -82,6 +88,7 @@ export default function handler(req, res) {
     if (req.method === 'POST' && action === 'move' && id) {
         const game = games.get(id);
         if (!game) {
+            console.log('Move: partie non trouvée', id);
             return res.status(404).json({ success: false, error: 'Partie non trouvée' });
         }
         
@@ -109,7 +116,7 @@ export default function handler(req, res) {
             return res.status(400).json({ success: false, error: 'Colonne pleine' });
         }
         
-        // Vérifier victoire (simplifié)
+        // Vérifier victoire
         const win = checkWin(game.board, rowPlayed, column, player);
         
         if (win) {
@@ -119,6 +126,8 @@ export default function handler(req, res) {
             game.currentPlayer = player === 'red' ? 'yellow' : 'red';
         }
         
+        game.lastMove = { row: rowPlayed, column, player };
+        
         return res.status(200).json({
             success: true,
             game: {
@@ -127,7 +136,7 @@ export default function handler(req, res) {
                 players: game.players,
                 status: game.status,
                 winner: game.winner,
-                lastMove: { row: rowPlayed, column }
+                lastMove: game.lastMove
             }
         });
     }
@@ -136,6 +145,7 @@ export default function handler(req, res) {
     if (req.method === 'GET' && id) {
         const game = games.get(id);
         if (!game) {
+            console.log('GET: partie non trouvée', id);
             return res.status(404).json({ success: false, error: 'Partie non trouvée' });
         }
         
@@ -158,7 +168,6 @@ export default function handler(req, res) {
     });
 }
 
-// Fonction de vérification de victoire
 function checkWin(board, row, col, player) {
     const directions = [
         [0, 1], [1, 0], [1, 1], [1, -1]
