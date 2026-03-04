@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>4 en rangée · Online Plato</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(145deg, #1a2f3f 0%, #0f1c26 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0;
+            padding: 16px;
+        }
+
+        .game-container {
+            background: #243b4a;
+            border-radius: 48px;
+            padding: 32px 24px 40px 24px;
+            box-shadow: 0 25px 40px rgba(0, 0, 0, 0.6), inset 2px 2px 5px rgba(255, 255, 255, 0.1), inset -3px -3px 8px rgba(0, 0, 0, 0.5);
+            border: 1px solid #3f5564;
+            max-width: 700px;
+            width: fit-content;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            font-weight: 500;
+            letter-spacing: 2px;
+            font-size: 2.2rem;
+            margin-top: -8px;
+            margin-bottom: 16px;
+            color: #ede7d9;
+            text-shadow: 0 4px 0 #0e1a21, 0 8px 10px rgba(0,0,0,0.4);
+            word-break: break-word;
+        }
+
+        .menu-section {
+            background: #1e3340;
+            border-radius: 40px;
+            padding: 20px;
+            margin-bottom: 25px;
+            box-shadow: inset 0 -4px 0 #0e1f29, 0 10px 15px rgba(0,0,0,0.4);
+            border-bottom: 2px solid #3f6175;
+        }
+
+        .game-code-display {
+            background: #0f262f;
+            padding: 20px;
+            border-radius: 30px;
+            text-align: center;
+            margin-bottom: 15px;
+            border: 2px solid #4b7b8f;
+            box-shadow: inset 0 2px 5px #2c4d5e;
+        }
+
+        .code-label {
+            color: #9bbfd0;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .code-value {
+            font-size: 3rem;
+            font-weight: 800;
+            color: #f5e3b3;
+            text-shadow: 0 4px 0 #7f5f30;
+            letter-spacing: 8px;
+            font-family: monospace;
+            margin: 5px 0;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin: 15px 0;
+            flex-wrap: wrap;
+        }
+
+        .input-group input {
+            flex: 1;
+            padding: 18px 20px;
+            border-radius: 60px;
+            border: none;
+            background: #132b36;
+            box-shadow: inset 0 -4px 0 #0b1f27, inset 0 2px 8px #2c4b58;
+            color: #f0e9d8;
+            font-size: 1.3rem;
+            text-align: center;
+            font-weight: bold;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            border-bottom: 2px solid #4b6d80;
+            outline: none;
+        }
+
+        .input-group input::placeholder {
+            color: #4f7184;
+            letter-spacing: normal;
+            font-size: 1rem;
+        }
+
+        .btn {
+            background: #3f6175;
+            border: none;
+            color: #fefae0;
+            font-size: 1.2rem;
+            font-weight: bold;
+            padding: 16px 28px;
+            border-radius: 60px;
+            cursor: pointer;
+            box-shadow: inset 0 -5px 0 #1f3643, 0 8px 0 #142630, 0 10px 15px black;
+            transition: all 0.08s linear;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 2px solid #7b9eb3;
+            flex: 1;
+            min-width: 140px;
+        }
+
+        .btn-primary {
+            background: #d64f2c;
+            border-bottom-color: #ff9066;
+            box-shadow: inset 0 -5px 0 #833c1e, 0 8px 0 #5d2b15;
+        }
+
+        .btn-success {
+            background: #2d7a4b;
+            border-bottom-color: #6db38c;
+            box-shadow: inset 0 -5px 0 #1c4d30, 0 8px 0 #123a24;
+        }
+
+        .btn:active {
+            transform: translateY(7px);
+            box-shadow: inset 0 -2px 0 #1f3643, 0 4px 0 #142630;
+        }
+
+        .btn-primary:active {
+            box-shadow: inset 0 -2px 0 #833c1e, 0 4px 0 #5d2b15;
+        }
+
+        .btn-success:active {
+            box-shadow: inset 0 -2px 0 #1c4d30, 0 4px 0 #123a24;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: inset 0 -5px 0 #1f3643, 0 8px 0 #142630;
+        }
+
+        .board-wrapper {
+            background: #2b4b5e;
+            padding: 25px 25px 35px 25px;
+            border-radius: 60px 60px 40px 40px;
+            box-shadow: inset 0 -5px 0 #10212b, inset 0 5px 10px rgba(255,255,240,0.1), 0 15px 20px rgba(0, 0, 0, 0.5);
+            border-bottom: 3px solid #3f6175;
+            position: relative;
+        }
+
+        canvas {
+            display: block;
+            margin: 0 auto;
+            width: 100%;
+            height: auto;
+            border-radius: 30px;
+            background: #1f3a48;
+            box-shadow: 0 0 0 2px #5e7c8f, 0 15px 0 #0e202b, 0 20px 20px rgba(0,0,0,0.3);
+            cursor: pointer;
+            touch-action: none;
+        }
+
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.7);
+            border-radius: 60px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2rem;
+            color: white;
+            backdrop-filter: blur(3px);
+            z-index: 10;
+        }
+
+        .game-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 28px;
+            padding: 0 10px;
+            color: #f0e9d8;
+            font-weight: 600;
+            text-shadow: 0 2px 3px black;
+        }
+
+        .turn-indicator {
+            background: #172d38;
+            padding: 14px 30px;
+            border-radius: 60px;
+            font-size: 1.4rem;
+            font-weight: 600;
+            box-shadow: inset 0 -4px 0 #0a1b23, 0 8px 0 #0b1a22, 0 10px 15px black;
+            border-bottom: 2px solid #4b6d80;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .turn-color {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: inline-block;
+            box-shadow: 0 3px 5px black;
+        }
+
+        .red-turn .turn-color { background: #e63946; border: 2px solid #ffb3ba; }
+        .yellow-turn .turn-color { background: #f4d03f; border: 2px solid #fff2b5; }
+
+        .btn-reset {
+            background: #d64f2c;
+            border: none;
+            color: #fefae0;
+            font-size: 1.3rem;
+            font-weight: bold;
+            padding: 14px 32px;
+            border-radius: 60px;
+            cursor: pointer;
+            box-shadow: inset 0 -5px 0 #833c1e, 0 8px 0 #5d2b15, 0 10px 15px black;
+            transition: all 0.08s linear;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            border-bottom: 2px solid #f57c5a;
+        }
+
+        .btn-reset:active {
+            transform: translateY(7px);
+            box-shadow: inset 0 -2px 0 #833c1e, 0 4px 0 #5d2b15;
+        }
+
+        .status-message {
+            text-align: center;
+            margin: 20px 0 0;
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #ead8b9;
+            text-shadow: 0 3px 0 #0f262f;
+            min-height: 3rem;
+        }
+
+        .player-badge {
+            display: inline-block;
+            padding: 8px 20px;
+            border-radius: 40px;
+            font-size: 1rem;
+            margin: 5px;
+            background: #1f3a48;
+            border: 2px solid;
+        }
+
+        .player-red { border-color: #e63946; color: #ffb3ba; }
+        .player-yellow { border-color: #f4d03f; color: #fff2b5; }
+
+        .games-list {
+            margin-top: 20px;
+            max-height: 200px;
+            overflow-y: auto;
+            background: #132b36;
+            border-radius: 30px;
+            padding: 10px;
+        }
+
+        .game-item {
+            padding: 12px 20px;
+            background: #1e3f4d;
+            margin: 8px 0;
+            border-radius: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            border: 2px solid #3f6b7c;
+            transition: all 0.1s;
+        }
+
+        .game-item:hover {
+            background: #255467;
+            border-color: #ffd966;
+        }
+
+        footer {
+            text-align: center;
+            color: #6b8b9c;
+            margin-top: 15px;
+            font-size: 0.9rem;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>⚫ 4 EN RANGÉE ONLINE ⚪</h1>
+
+        <!-- Menu principal (créer/rejoindre) -->
+        <div id="menuSection" class="menu-section">
+            <div class="input-group">
+                <button id="createGameBtn" class="btn btn-primary">🎮 CRÉER PARTIE</button>
+                <button id="refreshGamesBtn" class="btn">🔄 RAFRAÎCHIR</button>
+            </div>
+            
+            <div class="input-group">
+                <input type="text" id="gameCodeInput" placeholder="CODE PARTIE" maxlength="6" style="text-transform:uppercase">
+                <button id="joinGameBtn" class="btn btn-success">🔑 REJOINDRE</button>
+            </div>
+
+            <div id="gamesListContainer" class="games-list">
+                <!-- Les parties disponibles apparaîtront ici -->
+                <div style="text-align:center; color:#8ba9b9;">Chargement des parties...</div>
+            </div>
+        </div>
+
+        <!-- Section partie en cours -->
+        <div id="gameSection" class="hidden">
+            <div class="game-code-display">
+                <div class="code-label">CODE DE LA PARTIE</div>
+                <div class="code-value" id="currentGameCode">---</div>
+                <div style="display:flex; gap:10px; justify-content:center; margin-top:10px;">
+                    <span id="playerRedBadge" class="player-badge player-red">🔴 Rouge: ?</span>
+                    <span id="playerYellowBadge" class="player-badge player-yellow">🟡 Jaune: ?</span>
+                </div>
+            </div>
+
+            <div class="board-wrapper" id="boardWrapper">
+                <canvas id="gameCanvas" width="560" height="480"></canvas>
+                <div id="loadingOverlay" class="loading-overlay hidden">
+                    ⏳ Chargement...
+                </div>
+            </div>
+
+            <div class="game-info">
+                <div class="turn-indicator" id="turnIndicator">
+                    <span id="turnText">Joueur Rouge</span>
+                    <span class="turn-color" id="turnColor"></span>
+                </div>
+                <button class="btn-reset" id="leaveGameBtn">🚪 QUITTER</button>
+            </div>
+
+            <div id="statusMessage" class="status-message"></div>
+        </div>
+
+        <footer>cliquez sur une colonne · tour par tour online</footer>
+    </div>
+
+    <script>
+        (function() {
+            // -------------------- CONSTANTES --------------------
+            const ROWS = 6;
+            const COLS = 7;
+            const PLAYER_RED = 'red';
+            const PLAYER_YELLOW = 'yellow';
+            
+            // Dimensions canvas
+            const CANVAS_WIDTH = 560;
+            const CANVAS_HEIGHT = 480;
+            const CELL_SIZE = 70;
+            const OFFSET_X = (CANVAS_WIDTH - (COLS * CELL_SIZE)) / 2;
+            const OFFSET_Y = (CANVAS_HEIGHT - (ROWS * CELL_SIZE)) / 2;
+
+            // -------------------- ÉTAT DU JEU --------------------
+            let board = [];
+            let currentPlayer = PLAYER_RED;
+            let gameOver = false;
+            let winner = null;
+            let winningCells = [];
+            
+            // État multijoueur
+            let currentGameId = null;
+            let myPlayer = null; // 'red' ou 'yellow'
+            let gameStatus = 'waiting'; // waiting, playing, finished
+            let pollingInterval = null;
+            let lastMoveTimestamp = 0;
+
+            // Références DOM
+            const canvas = document.getElementById('gameCanvas');
+            const ctx = canvas.getContext('2d');
+            const turnText = document.getElementById('turnText');
+            const turnIndicator = document.getElementById('turnIndicator');
+            const statusDiv = document.getElementById('statusMessage');
+            const menuSection = document.getElementById('menuSection');
+            const gameSection = document.getElementById('gameSection');
+            const currentGameCode = document.getElementById('currentGameCode');
+            const playerRedBadge = document.getElementById('playerRedBadge');
+            const playerYellowBadge = document.getElementById('playerYellowBadge');
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            
+            // Boutons
+            const createGameBtn = document.getElementById('createGameBtn');
+            const refreshGamesBtn = document.getElementById('refreshGamesBtn');
+            const joinGameBtn = document.getElementById('joinGameBtn');
+            const leaveGameBtn = document.getElementById('leaveGameBtn');
+            const gameCodeInput = document.getElementById('gameCodeInput');
+            const gamesListContainer = document.getElementById('gamesListContainer');
+
+            // -------------------- FONCTIONS API --------------------
+            async function apiCall(endpoint, options = {}) {
+                try {
+                    const response = await fetch(endpoint, {
+                        ...options,
+                        headers: {
+                            'Content-Type': 'application/json',
+                            ...options.headers
+                        }
+                    });
+                    return await response.json();
+                } catch (error) {
+                    console.error('API Error:', error);
+                    return { success: false, error: 'Erreur réseau' };
+                }
+            }
+
+            async function createGame() {
+                const result = await apiCall('/api/game?action=create', { method: 'POST' });
+                if (result.success) {
+                    currentGameId = result.gameId;
+                    myPlayer = result.player;
+                    joinGameSession(result.gameId, result.game);
+                } else {
+                    alert('Erreur: ' + result.error);
+                }
+            }
+
+            async function joinGame(gameId) {
+                const result = await apiCall(`/api/game?action=join&id=${gameId}`, { method: 'POST' });
+                if (result.success) {
+                    currentGameId = result.gameId;
+                    myPlayer = result.player;
+                    joinGameSession(result.gameId, result.game);
+                } else {
+                    alert('Erreur: ' + result.error);
+                }
+            }
+
+            async function refreshGamesList() {
+                const result = await apiCall('/api/game?action=list');
+                if (result.success && result.games) {
+                    displayGamesList(result.games);
+                }
+            }
+
+            async function fetchGameState(gameId) {
+                const result = await apiCall(`/api/game?id=${gameId}`);
+                if (result.success) {
+                    updateGameFromServer(result.game);
+                } else if (result.error === 'Partie non trouvée') {
+                    // La partie a été supprimée
+                    leaveGame();
+                }
+            }
+
+            async function playMove(column) {
+                if (!currentGameId || !myPlayer || gameStatus !== 'playing' || gameOver) return;
+                if (myPlayer !== currentPlayer) {
+                    statusDiv.textContent = "Ce n'est pas ton tour !";
+                    return;
+                }
+
+                loadingOverlay.classList.remove('hidden');
+                
+                const result = await apiCall(`/api/game?action=move&id=${currentGameId}`, {
+                    method: 'POST',
+                    body: JSON.stringify({ player: myPlayer, column })
+                });
+
+                loadingOverlay.classList.add('hidden');
+
+                if (result.success) {
+                    updateGameFromServer(result.game);
+                } else {
+                    statusDiv.textContent = 'Erreur: ' + (result.error || 'Coup invalide');
+                    // Rafraîchir l'état au cas où
+                    fetchGameState(currentGameId);
+                }
+            }
+
+            async function resetGame() {
+                if (!currentGameId) return;
+                
+                loadingOverlay.classList.remove('hidden');
+                
+                const result = await apiCall(`/api/game?action=reset&id=${currentGameId}`, {
+                    method: 'POST'
+                });
+
+                loadingOverlay.classList.add('hidden');
+
+                if (result.success) {
+                    updateGameFromServer(result.game);
+                }
+            }
+
+            // -------------------- GESTION SESSION --------------------
+            function joinGameSession(gameId, gameData) {
+                currentGameId = gameId;
+                currentGameCode.textContent = gameId;
+                menuSection.classList.add('hidden');
+                gameSection.classList.remove('hidden');
+                
+                updateGameFromServer(gameData);
+                startPolling(gameId);
+            }
+
+            function leaveGame() {
+                // Arrêter le polling
+                if (pollingInterval) {
+                    clearInterval(pollingInterval);
+                    pollingInterval = null;
+                }
+                
+                // Réinitialiser l'état
+                currentGameId = null;
+                myPlayer = null;
+                gameStatus = 'waiting';
+                
+                // Afficher le menu
+                menuSection.classList.remove('hidden');
+                gameSection.classList.add('hidden');
+                
+                // Rafraîchir la liste des parties
+                refreshGamesList();
+            }
+
+            function startPolling(gameId) {
+                if (pollingInterval) clearInterval(pollingInterval);
+                
+                // Polling toutes les 2 secondes
+                pollingInterval = setInterval(() => {
+                    if (currentGameId) {
+                        fetchGameState(currentGameId);
+                    }
+                }, 2000);
+            }
+
+            function updateGameFromServer(game) {
+                if (!game) return;
+                
+                // Mettre à jour l'état
+                board = game.board || createEmptyBoard();
+                currentPlayer = game.currentPlayer || PLAYER_RED;
+                gameStatus = game.status || 'waiting';
+                winner = game.winner;
+                gameOver = (gameStatus === 'finished');
+                
+                // Mettre à jour les badges joueurs
+                playerRedBadge.textContent = `🔴 Rouge: ${game.players?.includes('red') ? '✅' : '⏳'}`;
+                playerYellowBadge.textContent = `🟡 Jaune: ${game.players?.includes('yellow') ? '✅' : '⏳'}`;
+                
+                // Réinitialiser les cellules gagnantes
+                winningCells = [];
+                
+                // Si c'est gagné, on recalcule les cellules gagnantes pour l'affichage
+                if (gameOver && winner && game.lastMove) {
+                    // On va recalculer la ligne gagnante (simplifié)
+                    checkWin(game.lastMove.row, game.lastMove.column, winner);
+                }
+                
+                drawBoard();
+                updateTurnDisplay();
+            }
+
+            // -------------------- LOGIQUE DU JEU (LOCALE) --------------------
+            function createEmptyBoard() {
+                return Array(ROWS).fill().map(() => Array(COLS).fill(null));
+            }
+
+            function checkWin(row, col, player) {
+                if (row === undefined || col === undefined) return false;
+                
+                winningCells = [];
+                const directions = [
+                    { dr: 0, dc: 1 },
+                    { dr: 1, dc: 0 },
+                    { dr: 1, dc: 1 },
+                    { dr: 1, dc: -1 }
+                ];
+
+                for (let { dr, dc } of directions) {
+                    let count = 1;
+                    let cells = [[row, col]];
+
+                    for (let step = 1; step < 4; step++) {
+                        const r = row + dr * step;
+                        const c = col + dc * step;
+                        if (r < 0 || r >= ROWS || c < 0 || c >= COLS || board[r]?.[c] !== player) break;
+                        count++;
+                        cells.push([r, c]);
+                    }
+
+                    for (let step = 1; step < 4; step++) {
+                        const r = row - dr * step;
+                        const c = col - dc * step;
+                        if (r < 0 || r >= ROWS || c < 0 || c >= COLS || board[r]?.[c] !== player) break;
+                        count++;
+                        cells.push([r, c]);
+                    }
+
+                    if (count >= 4) {
+                        winningCells = cells.slice(0, 4);
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            // -------------------- AFFICHAGE --------------------
+            function drawBoard() {
+                ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+                // Dessiner fond
+                ctx.fillStyle = '#265b70';
+                ctx.shadowColor = '#10212b';
+                ctx.shadowBlur = 10;
+                ctx.shadowOffsetY = 4;
+                ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+                ctx.shadowBlur = 0;
+
+                // Dessiner les trous et pions
+                for (let row = 0; row < ROWS; row++) {
+                    for (let col = 0; col < COLS; col++) {
+                        const x = OFFSET_X + col * CELL_SIZE + CELL_SIZE/2;
+                        const y = OFFSET_Y + row * CELL_SIZE + CELL_SIZE/2;
+                        const radius = CELL_SIZE * 0.4;
+
+                        // Trou
+                        ctx.beginPath();
+                        ctx.arc(x, y, radius+2, 0, 2 * Math.PI);
+                        ctx.fillStyle = '#17323f';
+                        ctx.shadowColor = 'black';
+                        ctx.shadowBlur = 12;
+                        ctx.shadowOffsetY = 3;
+                        ctx.fill();
+                        ctx.shadowBlur = 0;
+
+                        // Rebord
+                        ctx.beginPath();
+                        ctx.arc(x, y, radius-1, 0, 2 * Math.PI);
+                        ctx.fillStyle = '#3f6175';
+                        ctx.shadowBlur = 5;
+                        ctx.shadowColor = '#0e1a25';
+                        ctx.fill();
+                        ctx.shadowBlur = 0;
+
+                        // Pion
+                        const cellValue = board[row]?.[col];
+                        if (cellValue) {
+                            const gradient = ctx.createRadialGradient(x-8, y-8, 5, x, y, radius+5);
+                            if (cellValue === PLAYER_RED) {
+                                gradient.addColorStop(0, '#ff6b7c');
+                                gradient.addColorStop(0.7, '#b22234');
+                                gradient.addColorStop(1, '#7a1f2b');
+                            } else {
+                                gradient.addColorStop(0, '#fff7b0');
+                                gradient.addColorStop(0.6, '#f4c542');
+                                gradient.addColorStop(1, '#b37b2e');
+                            }
+
+                            ctx.beginPath();
+                            ctx.arc(x, y, radius-3, 0, 2 * Math.PI);
+                            ctx.fillStyle = gradient;
+                            ctx.shadowBlur = 15;
+                            ctx.shadowColor = 'black';
+                            ctx.shadowOffsetY = 3;
+                            ctx.fill();
+
+                            ctx.shadowBlur = 0;
+                            ctx.beginPath();
+                            ctx.arc(x-8, y-8, 6, 0, 2 * Math.PI);
+                            ctx.fillStyle = 'rgba(255,255,255,0.3)';
+                            ctx.fill();
+
+                            // Halo si gagnant
+                            if (winningCells.some(cell => cell[0] === row && cell[1] === col)) {
+                                ctx.beginPath();
+                                ctx.arc(x, y, radius+2, 0, 2*Math.PI);
+                                ctx.strokeStyle = '#FFD966';
+                                ctx.lineWidth = 6;
+                                ctx.shadowColor = '#FFB347';
+                                ctx.shadowBlur = 20;
+                                ctx.stroke();
+                                ctx.shadowBlur = 0;
+                            }
+                        }
+                    }
+                }
+            }
+
+            function updateTurnDisplay() {
+                if (gameStatus === 'waiting') {
+                    if (myPlayer === 'red') {
+                        turnText.textContent = '⏳ Attente du joueur jaune...';
+                    } else {
+                        turnText.textContent = '⏳ La partie n\'a pas commencé';
+                    }
+                    statusDiv.textContent = 'En attente d\'un adversaire...';
+                    turnIndicator.className = 'turn-indicator';
+                } else if (gameOver) {
+                    if (winner) {
+                        const winnerName = winner === PLAYER_RED ? 'Rouge' : 'Jaune';
+                        turnText.textContent = `🏆 Victoire ${winnerName} !`;
+                        statusDiv.textContent = winner === myPlayer ? '🎉 Tu as gagné !' : '😢 Tu as perdu...';
+                    } else {
+                        turnText.textContent = `Match nul`;
+                        statusDiv.textContent = `Match nul !`;
+                    }
+                    turnIndicator.className = `turn-indicator ${winner === PLAYER_RED ? 'red-turn' : 'yellow-turn'}`;
+                } else {
+                    const isMyTurn = (myPlayer === currentPlayer);
+                    turnText.textContent = currentPlayer === PLAYER_RED ? 'Tour Rouge' : 'Tour Jaune';
+                    turnIndicator.className = `turn-indicator ${currentPlayer === PLAYER_RED ? 'red-turn' : 'yellow-turn'}`;
+                    
+                    if (isMyTurn) {
+                        statusDiv.textContent = 'À toi de jouer !';
+                    } else {
+                        statusDiv.textContent = 'L\'adversaire réfléchit...';
+                    }
+                }
+            }
+
+            function displayGamesList(games) {
+                if (!games || games.length === 0) {
+                    gamesListContainer.innerHTML = '<div style="text-align:center; color:#8ba9b9; padding:20px;">Aucune partie disponible</div>';
+                    return;
+                }
+
+                let html = '';
+                games.forEach(game => {
+                    html += `
+                        <div class="game-item" onclick="window.joinGameFromList('${game.id}')">
+                            <span style="font-family:monospace; font-size:1.3rem; font-weight:bold;">${game.id}</span>
+                            <span>${game.players}/2 joueurs</span>
+                        </div>
+                    `;
+                });
+                gamesListContainer.innerHTML = html;
+            }
+
+            // -------------------- GESTION DES ÉVÉNEMENTS --------------------
+            function handleCanvasClick(e) {
+                if (gameStatus !== 'playing' || gameOver) return;
+                if (myPlayer !== currentPlayer) {
+                    statusDiv.textContent = "Ce n'est pas ton tour !";
+                    return;
+                }
+
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const mouseX = (e.clientX - rect.left) * scaleX;
+                
+                for (let col = 0; col < COLS; col++) {
+                    const leftX = OFFSET_X + col * CELL_SIZE;
+                    const rightX = leftX + CELL_SIZE;
+                    if (mouseX >= leftX && mouseX <= rightX) {
+                        playMove(col);
+                        break;
+                    }
+                }
+            }
+
+            function handleTouch(e) {
+                e.preventDefault();
+                if (gameStatus !== 'playing' || gameOver) return;
+                if (myPlayer !== currentPlayer) return;
+
+                if (e.touches.length > 0) {
+                    const rect = canvas.getBoundingClientRect();
+                    const touch = e.touches[0];
+                    const scaleX = canvas.width / rect.width;
+                    const touchX = (touch.clientX - rect.left) * scaleX;
+                    
+                    for (let col = 0; col < COLS; col++) {
+                        const leftX = OFFSET_X + col * CELL_SIZE;
+                        const rightX = leftX + CELL_SIZE;
+                        if (touchX >= leftX && touchX <= rightX) {
+                            playMove(col);
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // Rendre la fonction accessible globalement pour les clics sur la liste
+            window.joinGameFromList = function(gameId) {
+                joinGame(gameId);
+            };
+
+            // -------------------- INITIALISATION --------------------
+            function init() {
+                board = createEmptyBoard();
+                drawBoard();
+                refreshGamesList();
+                
+                // Rafraîchir la liste toutes les 10 secondes
+                setInterval(refreshGamesList, 10000);
+            }
+
+            // -------------------- EVENT LISTENERS --------------------
+            createGameBtn.addEventListener('click', createGame);
+            refreshGamesBtn.addEventListener('click', refreshGamesList);
+            
+            joinGameBtn.addEventListener('click', () => {
+                const code = gameCodeInput.value.trim().toUpperCase();
+                if (code.length >= 4) {
+                    joinGame(code);
+                } else {
+                    alert('Entrez un code valide (4-6 caractères)');
+                }
+            });
+
+            leaveGameBtn.addEventListener('click', leaveGame);
+
+            canvas.addEventListener('click', handleCanvasClick);
+            canvas.addEventListener('touchstart', handleTouch, { passive: false });
+
+            // Démarrer
+            init();
+        })();
+    </script>
+</body>
+</html>
