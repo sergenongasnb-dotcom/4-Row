@@ -1,4 +1,4 @@
-// api/game.js - Version complète et stable
+// api/game.js - Version avec statut qui fonctionne
 const games = new Map();
 
 export default function handler(req, res) {
@@ -12,11 +12,6 @@ export default function handler(req, res) {
     }
 
     const { action, id } = req.query;
-
-    // TEST : vérifier que l'API fonctionne
-    if (req.method === 'GET' && !action) {
-        return res.status(200).json({ success: true, message: "API OK" });
-    }
 
     // LISTER les parties disponibles
     if (req.method === 'GET' && action === 'list') {
@@ -38,15 +33,17 @@ export default function handler(req, res) {
             winner: null
         });
         
+        const game = games.get(gameId);
         return res.status(200).json({
             success: true,
             gameId,
             player: 'red',
             game: {
-                board: Array(6).fill().map(() => Array(7).fill(null)),
-                currentPlayer: 'red',
-                players: ['red'],
-                status: 'waiting'
+                board: game.board,
+                currentPlayer: game.currentPlayer,
+                players: game.players,
+                status: game.status,
+                winner: game.winner
             }
         });
     }
@@ -63,8 +60,9 @@ export default function handler(req, res) {
             return res.status(400).json({ success: false, error: 'Partie complète' });
         }
         
+        // Ajouter le joueur jaune
         game.players.push('yellow');
-        game.status = 'playing';
+        game.status = 'playing'; // ← CRUCIAL: passer en "playing" immédiatement
         
         return res.status(200).json({
             success: true,
@@ -74,7 +72,8 @@ export default function handler(req, res) {
                 board: game.board,
                 currentPlayer: game.currentPlayer,
                 players: game.players,
-                status: game.status
+                status: game.status,
+                winner: game.winner
             }
         });
     }
@@ -96,13 +95,28 @@ export default function handler(req, res) {
             return res.status(400).json({ success: false, error: 'Pas ton tour' });
         }
         
-        // Logique du coup (simplifiée)
+        // Jouer le coup
+        let rowPlayed = -1;
         for (let row = 5; row >= 0; row--) {
             if (!game.board[row][column]) {
                 game.board[row][column] = player;
-                game.currentPlayer = player === 'red' ? 'yellow' : 'red';
+                rowPlayed = row;
                 break;
             }
+        }
+        
+        if (rowPlayed === -1) {
+            return res.status(400).json({ success: false, error: 'Colonne pleine' });
+        }
+        
+        // Vérifier victoire (simplifié)
+        const win = checkWin(game.board, rowPlayed, column, player);
+        
+        if (win) {
+            game.status = 'finished';
+            game.winner = player;
+        } else {
+            game.currentPlayer = player === 'red' ? 'yellow' : 'red';
         }
         
         return res.status(200).json({
@@ -110,8 +124,10 @@ export default function handler(req, res) {
             game: {
                 board: game.board,
                 currentPlayer: game.currentPlayer,
+                players: game.players,
                 status: game.status,
-                players: game.players
+                winner: game.winner,
+                lastMove: { row: rowPlayed, column }
             }
         });
     }
@@ -130,14 +146,42 @@ export default function handler(req, res) {
                 currentPlayer: game.currentPlayer,
                 players: game.players,
                 status: game.status,
-                winner: game.winner
+                winner: game.winner,
+                lastMove: game.lastMove
             }
         });
     }
 
     return res.status(400).json({ 
         success: false, 
-        error: 'Action non supportée',
-        received: { method: req.method, action, id }
+        error: 'Action non supportée'
     });
+}
+
+// Fonction de vérification de victoire
+function checkWin(board, row, col, player) {
+    const directions = [
+        [0, 1], [1, 0], [1, 1], [1, -1]
+    ];
+    
+    for (let [dr, dc] of directions) {
+        let count = 1;
+        
+        for (let step = 1; step < 4; step++) {
+            const r = row + dr * step;
+            const c = col + dc * step;
+            if (r < 0 || r >= 6 || c < 0 || c >= 7 || board[r][c] !== player) break;
+            count++;
+        }
+        
+        for (let step = 1; step < 4; step++) {
+            const r = row - dr * step;
+            const c = col - dc * step;
+            if (r < 0 || r >= 6 || c < 0 || c >= 7 || board[r][c] !== player) break;
+            count++;
+        }
+        
+        if (count >= 4) return true;
+    }
+    return false;
 }
