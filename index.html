@@ -322,7 +322,6 @@
     <div class="game-container">
         <h1>⚫ 4 EN RANGÉE ONLINE ⚪</h1>
 
-        <!-- Menu principal (créer/rejoindre) -->
         <div id="menuSection" class="menu-section">
             <div class="input-group">
                 <button id="createGameBtn" class="btn btn-primary">🎮 CRÉER PARTIE</button>
@@ -335,19 +334,17 @@
             </div>
 
             <div id="gamesListContainer" class="games-list">
-                <!-- Les parties disponibles apparaîtront ici -->
                 <div style="text-align:center; color:#8ba9b9;">Chargement des parties...</div>
             </div>
         </div>
 
-        <!-- Section partie en cours -->
         <div id="gameSection" class="hidden">
             <div class="game-code-display">
                 <div class="code-label">CODE DE LA PARTIE</div>
                 <div class="code-value" id="currentGameCode">---</div>
                 <div style="display:flex; gap:10px; justify-content:center; margin-top:10px;">
-                    <span id="playerRedBadge" class="player-badge player-red">🔴 Rouge: ?</span>
-                    <span id="playerYellowBadge" class="player-badge player-yellow">🟡 Jaune: ?</span>
+                    <span id="playerRedBadge" class="player-badge player-red">🔴 Rouge: ⏳</span>
+                    <span id="playerYellowBadge" class="player-badge player-yellow">🟡 Jaune: ⏳</span>
                 </div>
             </div>
 
@@ -374,34 +371,28 @@
 
     <script>
         (function() {
-            // -------------------- CONSTANTES --------------------
             const ROWS = 6;
             const COLS = 7;
             const PLAYER_RED = 'red';
             const PLAYER_YELLOW = 'yellow';
             
-            // Dimensions canvas
             const CANVAS_WIDTH = 560;
             const CANVAS_HEIGHT = 480;
             const CELL_SIZE = 70;
             const OFFSET_X = (CANVAS_WIDTH - (COLS * CELL_SIZE)) / 2;
             const OFFSET_Y = (CANVAS_HEIGHT - (ROWS * CELL_SIZE)) / 2;
 
-            // -------------------- ÉTAT DU JEU --------------------
             let board = [];
             let currentPlayer = PLAYER_RED;
             let gameOver = false;
             let winner = null;
             let winningCells = [];
             
-            // État multijoueur
             let currentGameId = null;
-            let myPlayer = null; // 'red' ou 'yellow'
-            let gameStatus = 'waiting'; // waiting, playing, finished
+            let myPlayer = null;
+            let gameStatus = 'waiting';
             let pollingInterval = null;
-            let lastMoveTimestamp = 0;
 
-            // Références DOM
             const canvas = document.getElementById('gameCanvas');
             const ctx = canvas.getContext('2d');
             const turnText = document.getElementById('turnText');
@@ -414,7 +405,6 @@
             const playerYellowBadge = document.getElementById('playerYellowBadge');
             const loadingOverlay = document.getElementById('loadingOverlay');
             
-            // Boutons
             const createGameBtn = document.getElementById('createGameBtn');
             const refreshGamesBtn = document.getElementById('refreshGamesBtn');
             const joinGameBtn = document.getElementById('joinGameBtn');
@@ -422,10 +412,12 @@
             const gameCodeInput = document.getElementById('gameCodeInput');
             const gamesListContainer = document.getElementById('gamesListContainer');
 
-            // -------------------- FONCTIONS API --------------------
             async function apiCall(endpoint, options = {}) {
                 try {
-                    const response = await fetch(endpoint, {
+                    const baseUrl = window.location.origin;
+                    const url = endpoint.startsWith('/') ? `${baseUrl}${endpoint}` : endpoint;
+                    
+                    const response = await fetch(url, {
                         ...options,
                         headers: {
                             'Content-Type': 'application/json',
@@ -456,6 +448,7 @@
                     currentGameId = result.gameId;
                     myPlayer = result.player;
                     joinGameSession(result.gameId, result.game);
+                    fetchGameState(gameId);
                 } else {
                     alert('Erreur: ' + result.error);
                 }
@@ -472,9 +465,6 @@
                 const result = await apiCall(`/api/game?id=${gameId}`);
                 if (result.success) {
                     updateGameFromServer(result.game);
-                } else if (result.error === 'Partie non trouvée') {
-                    // La partie a été supprimée
-                    leaveGame();
                 }
             }
 
@@ -498,28 +488,10 @@
                     updateGameFromServer(result.game);
                 } else {
                     statusDiv.textContent = 'Erreur: ' + (result.error || 'Coup invalide');
-                    // Rafraîchir l'état au cas où
                     fetchGameState(currentGameId);
                 }
             }
 
-            async function resetGame() {
-                if (!currentGameId) return;
-                
-                loadingOverlay.classList.remove('hidden');
-                
-                const result = await apiCall(`/api/game?action=reset&id=${currentGameId}`, {
-                    method: 'POST'
-                });
-
-                loadingOverlay.classList.add('hidden');
-
-                if (result.success) {
-                    updateGameFromServer(result.game);
-                }
-            }
-
-            // -------------------- GESTION SESSION --------------------
             function joinGameSession(gameId, gameData) {
                 currentGameId = gameId;
                 currentGameCode.textContent = gameId;
@@ -531,56 +503,50 @@
             }
 
             function leaveGame() {
-                // Arrêter le polling
                 if (pollingInterval) {
                     clearInterval(pollingInterval);
                     pollingInterval = null;
                 }
                 
-                // Réinitialiser l'état
                 currentGameId = null;
                 myPlayer = null;
                 gameStatus = 'waiting';
                 
-                // Afficher le menu
                 menuSection.classList.remove('hidden');
                 gameSection.classList.add('hidden');
                 
-                // Rafraîchir la liste des parties
                 refreshGamesList();
             }
 
             function startPolling(gameId) {
                 if (pollingInterval) clearInterval(pollingInterval);
                 
-                // Polling toutes les 2 secondes
                 pollingInterval = setInterval(() => {
                     if (currentGameId) {
                         fetchGameState(currentGameId);
                     }
-                }, 2000);
+                }, 1000);
             }
 
             function updateGameFromServer(game) {
                 if (!game) return;
                 
-                // Mettre à jour l'état
                 board = game.board || createEmptyBoard();
                 currentPlayer = game.currentPlayer || PLAYER_RED;
                 gameStatus = game.status || 'waiting';
                 winner = game.winner;
                 gameOver = (gameStatus === 'finished');
                 
-                // Mettre à jour les badges joueurs
                 playerRedBadge.textContent = `🔴 Rouge: ${game.players?.includes('red') ? '✅' : '⏳'}`;
                 playerYellowBadge.textContent = `🟡 Jaune: ${game.players?.includes('yellow') ? '✅' : '⏳'}`;
                 
-                // Réinitialiser les cellules gagnantes
+                if (game.players?.length === 2 && gameStatus === 'waiting') {
+                    gameStatus = 'playing';
+                }
+                
                 winningCells = [];
                 
-                // Si c'est gagné, on recalcule les cellules gagnantes pour l'affichage
                 if (gameOver && winner && game.lastMove) {
-                    // On va recalculer la ligne gagnante (simplifié)
                     checkWin(game.lastMove.row, game.lastMove.column, winner);
                 }
                 
@@ -588,7 +554,6 @@
                 updateTurnDisplay();
             }
 
-            // -------------------- LOGIQUE DU JEU (LOCALE) --------------------
             function createEmptyBoard() {
                 return Array(ROWS).fill().map(() => Array(COLS).fill(null));
             }
@@ -632,11 +597,9 @@
                 return false;
             }
 
-            // -------------------- AFFICHAGE --------------------
             function drawBoard() {
                 ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-                // Dessiner fond
                 ctx.fillStyle = '#265b70';
                 ctx.shadowColor = '#10212b';
                 ctx.shadowBlur = 10;
@@ -644,14 +607,12 @@
                 ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
                 ctx.shadowBlur = 0;
 
-                // Dessiner les trous et pions
                 for (let row = 0; row < ROWS; row++) {
                     for (let col = 0; col < COLS; col++) {
                         const x = OFFSET_X + col * CELL_SIZE + CELL_SIZE/2;
                         const y = OFFSET_Y + row * CELL_SIZE + CELL_SIZE/2;
                         const radius = CELL_SIZE * 0.4;
 
-                        // Trou
                         ctx.beginPath();
                         ctx.arc(x, y, radius+2, 0, 2 * Math.PI);
                         ctx.fillStyle = '#17323f';
@@ -661,7 +622,6 @@
                         ctx.fill();
                         ctx.shadowBlur = 0;
 
-                        // Rebord
                         ctx.beginPath();
                         ctx.arc(x, y, radius-1, 0, 2 * Math.PI);
                         ctx.fillStyle = '#3f6175';
@@ -670,7 +630,6 @@
                         ctx.fill();
                         ctx.shadowBlur = 0;
 
-                        // Pion
                         const cellValue = board[row]?.[col];
                         if (cellValue) {
                             const gradient = ctx.createRadialGradient(x-8, y-8, 5, x, y, radius+5);
@@ -698,7 +657,6 @@
                             ctx.fillStyle = 'rgba(255,255,255,0.3)';
                             ctx.fill();
 
-                            // Halo si gagnant
                             if (winningCells.some(cell => cell[0] === row && cell[1] === col)) {
                                 ctx.beginPath();
                                 ctx.arc(x, y, radius+2, 0, 2*Math.PI);
@@ -716,12 +674,13 @@
 
             function updateTurnDisplay() {
                 if (gameStatus === 'waiting') {
-                    if (myPlayer === 'red') {
+                    if (myPlayer === 'red' && gameStatus === 'waiting') {
                         turnText.textContent = '⏳ Attente du joueur jaune...';
+                        statusDiv.textContent = 'En attente d\'un adversaire...';
                     } else {
                         turnText.textContent = '⏳ La partie n\'a pas commencé';
+                        statusDiv.textContent = 'En attente que l\'hôte démarre...';
                     }
-                    statusDiv.textContent = 'En attente d\'un adversaire...';
                     turnIndicator.className = 'turn-indicator';
                 } else if (gameOver) {
                     if (winner) {
@@ -729,8 +688,8 @@
                         turnText.textContent = `🏆 Victoire ${winnerName} !`;
                         statusDiv.textContent = winner === myPlayer ? '🎉 Tu as gagné !' : '😢 Tu as perdu...';
                     } else {
-                        turnText.textContent = `Match nul`;
-                        statusDiv.textContent = `Match nul !`;
+                        turnText.textContent = 'Match nul';
+                        statusDiv.textContent = 'Match nul !';
                     }
                     turnIndicator.className = `turn-indicator ${winner === PLAYER_RED ? 'red-turn' : 'yellow-turn'}`;
                 } else {
@@ -764,7 +723,6 @@
                 gamesListContainer.innerHTML = html;
             }
 
-            // -------------------- GESTION DES ÉVÉNEMENTS --------------------
             function handleCanvasClick(e) {
                 if (gameStatus !== 'playing' || gameOver) return;
                 if (myPlayer !== currentPlayer) {
@@ -808,22 +766,17 @@
                 }
             }
 
-            // Rendre la fonction accessible globalement pour les clics sur la liste
             window.joinGameFromList = function(gameId) {
                 joinGame(gameId);
             };
 
-            // -------------------- INITIALISATION --------------------
             function init() {
                 board = createEmptyBoard();
                 drawBoard();
                 refreshGamesList();
-                
-                // Rafraîchir la liste toutes les 10 secondes
                 setInterval(refreshGamesList, 10000);
             }
 
-            // -------------------- EVENT LISTENERS --------------------
             createGameBtn.addEventListener('click', createGame);
             refreshGamesBtn.addEventListener('click', refreshGamesList);
             
@@ -841,7 +794,6 @@
             canvas.addEventListener('click', handleCanvasClick);
             canvas.addEventListener('touchstart', handleTouch, { passive: false });
 
-            // Démarrer
             init();
         })();
     </script>
