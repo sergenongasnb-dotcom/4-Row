@@ -2,8 +2,31 @@ const http = require('http');
 const fs = require('fs');
 const url = require('url');
 
-// Stockage des parties
+// Stockage des parties normales
 const games = new Map();
+
+// Stockage des matchs de tournoi
+const matchs = new Map();
+
+// Créer les 8 matchs de 8ème au démarrage
+function initTournoi() {
+    for (let i = 1; i <= 8; i++) {
+        const matchId = `8EME${i}`;
+        matchs.set(matchId, {
+            id: matchId,
+            joueurs: [null, null],
+            gagnant: null,
+            statut: "en-attente",
+            board: Array(6).fill().map(() => Array(7).fill(null)),
+            currentPlayer: 'red',
+            dernierCoup: null,
+            spectateurs: 0
+        });
+    }
+    console.log("🏆 Tournoi initialisé avec 8 matchs");
+}
+
+initTournoi();
 
 function checkWin(board, row, col, player) {
     const directions = [[0,1], [1,0], [1,1], [1,-1]];
@@ -24,7 +47,12 @@ function checkWin(board, row, col, player) {
     return false;
 }
 
-const server = http.createServer(async (req, res) => {
+const server = http.createServer((req, res) => {
+    // Parse URL
+    const parsedUrl = url.parse(req.url, true);
+    const path = parsedUrl.pathname;
+    const query = parsedUrl.query;
+
     // CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -36,11 +64,84 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
-    const parsedUrl = url.parse(req.url, true);
-    const path = parsedUrl.pathname;
-    const query = parsedUrl.query;
+    // ==================== API TOURNOI ====================
 
-    // === API ROUTES ===
+    // Route pour obtenir la liste des matchs
+    if (path === '/api/matchs') {
+        const listeMatchs = Array.from(matchs.entries()).map(([id, match]) => ({
+            id: match.id,
+            joueurs: match.joueurs.map(j => j ? '✅' : '⏳'),
+            gagnant: match.gagnant,
+            statut: match.statut
+        }));
+        
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true, matchs: listeMatchs }));
+        return;
+    }
+
+    // Route pour un match spécifique
+    if (path === '/api/match' && query.id) {
+        const match = matchs.get(query.id);
+        if (!match) {
+            res.writeHead(404);
+            res.end(JSON.stringify({ success: false, error: 'Match non trouvé' }));
+            return;
+        }
+
+        if (req.method === 'GET') {
+            res.writeHead(200);
+            res.end(JSON.stringify({ success: true, match }));
+            return;
+        }
+
+        if (req.method === 'POST') {
+            let body = '';
+            req.on('data', chunk => body += chunk);
+            req.on('end', () => {
+                try {
+                    const { action, joueur, player, column } = JSON.parse(body);
+
+                    if (action === 'rejoindre') {
+                        if (match.joueurs[0] === null) {
+                            match.joueurs[0] = joueur;
+                        } else if (match.joueurs[1] === null) {
+                            match.joueurs[1] = joueur;
+                            match.statut = "en-cours";
+                        } else {
+                            match.spectateurs++;
+                        }
+                    }
+
+                    if (action === 'jouer') {
+                        for (let row = 5; row >= 0; row--) {
+                            if (!match.board[row][column]) {
+                                match.board[row][column] = player;
+                                match.currentPlayer = player === 'red' ? 'yellow' : 'red';
+                                break;
+                            }
+                        }
+                    }
+
+                    if (action === 'fin') {
+                        match.gagnant = joueur;
+                        match.statut = "termine";
+                    }
+
+                    res.writeHead(200);
+                    res.end(JSON.stringify({ success: true, match }));
+                } catch (e) {
+                    res.writeHead(400);
+                    res.end(JSON.stringify({ success: false, error: 'Bad request' }));
+                }
+            });
+            return;
+        }
+    }
+
+    // ==================== JEU NORMAL (inchangé) ====================
+    
+    // Route pour API game normale
     if (path === '/api/game') {
         const { action, id } = query;
 
@@ -192,12 +293,42 @@ const server = http.createServer(async (req, res) => {
         }
     }
 
-    // === SERVIR index.html ===
+    // ==================== PAGES HTML ====================
+
+    // Page d'accueil
     if (path === '/' || path === '/index.html') {
         fs.readFile('./index.html', (err, data) => {
             if (err) {
                 res.writeHead(500);
                 res.end('Error loading index.html');
+                return;
+            }
+            res.writeHead(200, { 'Content-Type': 'text/html' });
+            res.end(data);
+        });
+        return;
+    }
+
+    // Page match de tournoi
+    if (path.startsWith('/match/')) {
+        fs.readFile('./match.html', (err, data) => {
+            if (err) {
+                res.writeHead(500);
+                res.end('Erreur chargement match');
+                return;
+            }
+            res.writeHead(200, { 'Content-Type': 'text/html' });
+            res.end(data);
+        });
+        return;
+    }
+
+    // Page tournoi public
+    if (path === '/tournoi') {
+        fs.readFile('./tournoi.html', (err, data) => {
+            if (err) {
+                res.writeHead(500);
+                res.end('Erreur chargement tournoi');
                 return;
             }
             res.writeHead(200, { 'Content-Type': 'text/html' });
@@ -213,140 +344,5 @@ const server = http.createServer(async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+    console.log(`✅ Serveur démarré sur port ${PORT}`);
 });
-// À AJOUTER dans server.js, après la partie existante
-
-// Stockage des matchs de tournoi
-const matchs = new Map();
-
-// Créer les 8 matchs de 8ème au démarrage
-function initTournoi() {
-    for (let i = 1; i <= 8; i++) {
-        const matchId = `8EME${i}`;
-        matchs.set(matchId, {
-            id: matchId,
-            joueurs: [null, null], // [rouge, jaune]
-            gagnant: null,
-            statut: "en-attente", // en-attente, en-cours, termine
-            board: Array(6).fill().map(() => Array(7).fill(null)),
-            currentPlayer: 'red',
-            dernierCoup: null,
-            spectateurs: 0
-        });
-    }
-    console.log("🏆 Tournoi initialisé avec 8 matchs");
-}
-
-initTournoi();
-
-// Route pour obtenir la liste des matchs
-if (path === '/api/matchs') {
-    const listeMatchs = Array.from(matchs.entries()).map(([id, match]) => ({
-        id: match.id,
-        joueurs: match.joueurs.map(j => j ? '✅' : '⏳'),
-        gagnant: match.gagnant,
-        statut: match.statut
-    }));
-    
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ success: true, matchs: listeMatchs }));
-    return;
-}
-
-// Route pour rejoindre/rejoindre un match
-if (path === '/api/match' && query.id) {
-    const match = matchs.get(query.id);
-    if (!match) {
-        res.writeHead(404);
-        res.end(JSON.stringify({ success: false, error: 'Match non trouvé' }));
-        return;
-    }
-
-    if (req.method === 'GET') {
-        // Retourner l'état du match
-        res.writeHead(200);
-        res.end(JSON.stringify({ 
-            success: true, 
-            match: {
-                ...match,
-                // Cacher les infos sensibles si besoin
-            }
-        }));
-        return;
-    }
-
-    if (req.method === 'POST') {
-        let body = '';
-        req.on('data', chunk => body += chunk);
-        req.on('end', () => {
-            const { action, joueur } = JSON.parse(body);
-
-            if (action === 'rejoindre') {
-                // Assigner le joueur à une couleur disponible
-                if (match.joueurs[0] === null) {
-                    match.joueurs[0] = joueur;
-                    match.statut = "en-attente";
-                } else if (match.joueurs[1] === null) {
-                    match.joueurs[1] = joueur;
-                    match.statut = "en-cours";
-                } else {
-                    // C'est un spectateur
-                    match.spectateurs++;
-                }
-            }
-
-            if (action === 'jouer') {
-                const { column, player } = JSON.parse(body);
-                // Logique de jeu identique à avant
-                for (let row = 5; row >= 0; row--) {
-                    if (!match.board[row][column]) {
-                        match.board[row][column] = player;
-                        match.currentPlayer = player === 'red' ? 'yellow' : 'red';
-                        break;
-                    }
-                }
-            }
-
-            if (action === 'fin') {
-                match.gagnant = joueur;
-                match.statut = "termine";
-            }
-
-            res.writeHead(200);
-            res.end(JSON.stringify({ success: true, match }));
-        });
-        return;
-    }
-}
-
-// Route pour servir match.html
-if (path.startsWith('/match/')) {
-    const matchId = path.split('/')[2];
-    fs.readFile('./match.html', (err, data) => {
-        if (err) {
-            res.writeHead(500);
-            res.end('Erreur chargement match');
-            return;
-        }
-        let html = data.toString();
-        html = html.replace('{{MATCH_ID}}', matchId);
-        res.writeHead(200, { 'Content-Type': 'text/html' });
-        res.end(html);
-    });
-    return;
-}
-
-// Route pour servir tournoi.html
-if (path === '/tournoi') {
-    fs.readFile('./tournoi.html', (err, data) => {
-        if (err) {
-            res.writeHead(500);
-            res.end('Erreur chargement tournoi');
-            return;
-        }
-        res.writeHead(200, { 'Content-Type': 'text/html' });
-        res.end(data);
-    });
-    return;
-}
