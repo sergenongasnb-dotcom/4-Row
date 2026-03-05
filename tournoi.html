@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Tournoi - Tableau</title>
+    <style>
+        body { font-family: system-ui; background: #1a2f3f; color: white; padding: 20px; }
+        h1 { text-align: center; }
+        .tournoi-container { max-width: 1000px; margin: 0 auto; }
+        .huitieme { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin: 40px 0; }
+        .match-card { background: #243b4a; padding: 15px; border-radius: 15px; text-align: center; }
+        .match-card h3 { margin: 0 0 10px; color: #f5e3b3; }
+        .joueurs { display: flex; justify-content: space-around; margin: 10px 0; }
+        .rouge { color: #ffb3ba; }
+        .jaune { color: #fff2b5; }
+        .gagnant { background: #2d7a4b; padding: 5px; border-radius: 10px; margin-top: 10px; }
+        .en-attente { opacity: 0.6; }
+        .quarts { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin: 40px 0; }
+        .demies { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin: 40px 0; }
+        .finale { display: grid; grid-template-columns: 1fr; gap: 20px; margin: 40px 0; }
+    </style>
+</head>
+<body>
+    <div class="tournoi-container">
+        <h1>🏆 TOURNOI 4 EN RANGÉE 🏆</h1>
+        
+        <div id="huitieme" class="huitieme">
+            <!-- Les 8èmes apparaîtront ici -->
+        </div>
+
+        <div id="quarts" class="quarts">
+            <!-- Quarts de finale -->
+        </div>
+
+        <div id="demies" class="demies">
+            <!-- Demi-finales -->
+        </div>
+
+        <div id="finale" class="finale">
+            <!-- Finale -->
+        </div>
+    </div>
+
+    <script>
+        async function refreshTournoi() {
+            const res = await fetch('/api/matchs');
+            const data = await res.json();
+            
+            if (data.success) {
+                afficherMatchs(data.matchs);
+            }
+        }
+
+        function afficherMatchs(matchs) {
+            // Filtrer par phase
+            const huitieme = matchs.filter(m => m.id.startsWith('8EME'));
+            const quarts = matchs.filter(m => m.id.startsWith('QUART'));
+            const demies = matchs.filter(m => m.id.startsWith('DEMI'));
+            const finale = matchs.filter(m => m.id.startsWith('FINALE'));
+
+            // Afficher 8èmes
+            document.getElementById('huitieme').innerHTML = huitieme.map(m => `
+                <div class="match-card ${m.statut}">
+                    <h3>⚔️ ${m.id}</h3>
+                    <div class="joueurs">
+                        <span class="rouge">${m.joueurs[0]}</span>
+                        <span>VS</span>
+                        <span class="jaune">${m.joueurs[1]}</span>
+                    </div>
+                    ${m.gagnant ? `<div class="gagnant">🏆 Gagnant: ${m.gagnant === 'red' ? 'Rouge' : 'Jaune'}</div>` : ''}
+                    <div style="margin-top: 10px;">
+                        <a href="/match/${m.id}" target="_blank">Voir le match</a>
+                    </div>
+                </div>
+            `).join('');
+
+            // Même chose pour quarts, demies, finale
+        }
+
+        // Rafraîchir toutes les 5 secondes
+        refreshTournoi();
+        setInterval(refreshTournoi, 5000);
+    </script>
+</body>
+</html>
