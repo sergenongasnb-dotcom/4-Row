@@ -6,11 +6,12 @@
         body { font-family: system-ui; background: #1a2f3f; color: white; text-align: center; padding: 20px; }
         .match-container { max-width: 600px; margin: 0 auto; background: #243b4a; padding: 20px; border-radius: 20px; }
         .info { background: #172d38; padding: 15px; border-radius: 10px; margin: 10px 0; }
-        canvas { width: 100%; background: #1f3a48; border-radius: 10px; }
+        canvas { width: 100%; background: #1f3a48; border-radius: 10px; cursor: pointer; }
         .badge { display: inline-block; padding: 10px; margin: 5px; border-radius: 10px; }
         .red-badge { background: #e63946; }
         .yellow-badge { background: #f4d03f; color: black; }
         .spectateur { opacity: 0.7; }
+        .btn { background: #3f6175; color: white; padding: 10px 20px; border: none; border-radius: 30px; cursor: pointer; margin: 10px; }
     </style>
 </head>
 <body>
@@ -30,7 +31,7 @@
         
         <div id="message"></div>
         <div style="margin-top: 20px;">
-            <button onclick="copierLien()">📋 Copier le lien du match</button>
+            <button class="btn" onclick="copierLien()">📋 Copier le lien du match</button>
         </div>
     </div>
 
@@ -40,6 +41,19 @@
 
         let monRole = null; // 'red', 'yellow', 'spectator'
         let matchData = null;
+        let monPseudo = null;
+
+        // Dimensions canvas
+        const CANVAS_WIDTH = 560;
+        const CANVAS_HEIGHT = 480;
+        const CELL_SIZE = 70;
+        const ROWS = 6;
+        const COLS = 7;
+        const OFFSET_X = (CANVAS_WIDTH - (COLS * CELL_SIZE)) / 2;
+        const OFFSET_Y = (CANVAS_HEIGHT - (ROWS * CELL_SIZE)) / 2;
+
+        const canvas = document.getElementById('board');
+        const ctx = canvas.getContext('2d');
 
         function copierLien() {
             navigator.clipboard.writeText(window.location.href);
@@ -52,16 +66,15 @@
             if (data.success) {
                 matchData = data.match;
                 updateUI();
+                drawBoard();
             }
         }
 
         function updateUI() {
-            // Mettre à jour les badges
             document.getElementById('rouge').textContent = `🔴 Rouge: ${matchData.joueurs[0] ? '✅' : '⏳'}`;
             document.getElementById('jaune').textContent = `🟡 Jaune: ${matchData.joueurs[1] ? '✅' : '⏳'}`;
-            document.getElementById('spectateurs').textContent = `👁️ ${matchData.spectateurs} spectateur(s)`;
+            document.getElementById('spectateurs').textContent = `👁️ ${matchData.spectateurs || 0} spectateur(s)`;
             
-            // Statut
             if (matchData.statut === 'termine') {
                 document.getElementById('statut').textContent = `🏆 Gagnant: ${matchData.gagnant === 'red' ? 'Rouge' : 'Jaune'}`;
             } else if (matchData.joueurs[0] && matchData.joueurs[1]) {
@@ -69,24 +82,84 @@
             } else {
                 document.getElementById('statut').textContent = 'En attente des joueurs...';
             }
-
-            // Dessiner le plateau (même code que avant)
-            drawBoard();
         }
 
         function drawBoard() {
-            const canvas = document.getElementById('board');
-            const ctx = canvas.getContext('2d');
-            ctx.clearRect(0, 0, 560, 480);
-            // Même code de dessin que dans index.html
-            // ... (copier la fonction drawBoard de index.html)
+            ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+            // Fond
+            ctx.fillStyle = '#265b70';
+            ctx.shadowColor = '#10212b';
+            ctx.shadowBlur = 10;
+            ctx.shadowOffsetY = 4;
+            ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+            ctx.shadowBlur = 0;
+
+            if (!matchData || !matchData.board) return;
+
+            // Dessiner les trous et pions
+            for (let row = 0; row < ROWS; row++) {
+                for (let col = 0; col < COLS; col++) {
+                    const x = OFFSET_X + col * CELL_SIZE + CELL_SIZE/2;
+                    const y = OFFSET_Y + row * CELL_SIZE + CELL_SIZE/2;
+                    const radius = CELL_SIZE * 0.4;
+
+                    // Trou
+                    ctx.beginPath();
+                    ctx.arc(x, y, radius+2, 0, 2 * Math.PI);
+                    ctx.fillStyle = '#17323f';
+                    ctx.shadowColor = 'black';
+                    ctx.shadowBlur = 12;
+                    ctx.shadowOffsetY = 3;
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+
+                    // Rebord
+                    ctx.beginPath();
+                    ctx.arc(x, y, radius-1, 0, 2 * Math.PI);
+                    ctx.fillStyle = '#3f6175';
+                    ctx.shadowBlur = 5;
+                    ctx.shadowColor = '#0e1a25';
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+
+                    // Pion
+                    const cellValue = matchData.board[row]?.[col];
+                    if (cellValue) {
+                        const gradient = ctx.createRadialGradient(x-8, y-8, 5, x, y, radius+5);
+                        if (cellValue === 'red') {
+                            gradient.addColorStop(0, '#ff6b7c');
+                            gradient.addColorStop(0.7, '#b22234');
+                            gradient.addColorStop(1, '#7a1f2b');
+                        } else {
+                            gradient.addColorStop(0, '#fff7b0');
+                            gradient.addColorStop(0.6, '#f4c542');
+                            gradient.addColorStop(1, '#b37b2e');
+                        }
+
+                        ctx.beginPath();
+                        ctx.arc(x, y, radius-3, 0, 2 * Math.PI);
+                        ctx.fillStyle = gradient;
+                        ctx.shadowBlur = 15;
+                        ctx.shadowColor = 'black';
+                        ctx.shadowOffsetY = 3;
+                        ctx.fill();
+
+                        ctx.shadowBlur = 0;
+                        ctx.beginPath();
+                        ctx.arc(x-8, y-8, 6, 0, 2 * Math.PI);
+                        ctx.fillStyle = 'rgba(255,255,255,0.3)';
+                        ctx.fill();
+                    }
+                }
+            }
         }
 
-        // Déterminer mon rôle
         async function rejoindre() {
-            const pseudo = prompt("Entre ton nom (ou 'spectateur' pour regarder) :");
+            const pseudo = prompt("Entre ton nom :");
             if (!pseudo) return;
 
+            monPseudo = pseudo;
             const res = await fetch(`/api/match?id=${matchId}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -95,12 +168,49 @@
             
             const data = await res.json();
             if (data.success) {
-                monRole = pseudo;
-                refreshMatch();
+                matchData = data.match;
+                if (matchData.joueurs[0] === pseudo) monRole = 'red';
+                else if (matchData.joueurs[1] === pseudo) monRole = 'yellow';
+                else monRole = 'spectateur';
+                updateUI();
+                drawBoard();
             }
         }
 
-        // Rafraîchir toutes les 2 secondes
+        async function jouerCoup(column) {
+            if (!monRole || monRole === 'spectateur') return;
+            if (matchData.currentPlayer !== monRole) return;
+            if (matchData.statut !== 'en-cours') return;
+
+            const res = await fetch(`/api/match?id=${matchId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    action: 'jouer', 
+                    player: monRole,
+                    column: column 
+                })
+            });
+        }
+
+        function handleCanvasClick(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const mouseX = (e.clientX - rect.left) * scaleX;
+            
+            for (let col = 0; col < COLS; col++) {
+                const leftX = OFFSET_X + col * CELL_SIZE;
+                const rightX = leftX + CELL_SIZE;
+                if (mouseX >= leftX && mouseX <= rightX) {
+                    jouerCoup(col);
+                    break;
+                }
+            }
+        }
+
+        canvas.addEventListener('click', handleCanvasClick);
+
+        // Démarrer
         rejoindre();
         setInterval(refreshMatch, 2000);
     </script>
