@@ -1,4 +1,8 @@
 {
   "name": "4-en-rangee",
-  "version": "1.0.0"
+  "version": "1.0.0",
+  "scripts": {
+    "start": "node api/game.js"
+  },
+  "dependencies": {}
 }
