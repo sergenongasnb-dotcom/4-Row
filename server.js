@@ -16,7 +16,7 @@ function initTournoi() {
             id: matchId,
             joueurs: [null, null],
             gagnant: null,
-            statut: "en-attente",
+            statut: "en-attente", // en-attente, en-cours, termine
             board: Array(6).fill().map(() => Array(7).fill(null)),
             currentPlayer: 'red',
             dernierCoup: null,
@@ -29,19 +29,32 @@ function initTournoi() {
 initTournoi();
 
 function checkWin(board, row, col, player) {
-    const directions = [[0,1], [1,0], [1,1], [1,-1]];
+    const directions = [
+        [0, 1],   // horizontal
+        [1, 0],   // vertical
+        [1, 1],   // diagonale \
+        [1, -1]   // diagonale /
+    ];
+    
     for (let [dr, dc] of directions) {
         let count = 1;
+        
+        // Direction positive
         for (let step = 1; step < 4; step++) {
-            const r = row + dr * step, c = col + dc * step;
+            const r = row + dr * step;
+            const c = col + dc * step;
             if (r < 0 || r >= 6 || c < 0 || c >= 7 || !board[r] || board[r][c] !== player) break;
             count++;
         }
+        
+        // Direction négative
         for (let step = 1; step < 4; step++) {
-            const r = row - dr * step, c = col - dc * step;
+            const r = row - dr * step;
+            const c = col - dc * step;
             if (r < 0 || r >= 6 || c < 0 || c >= 7 || !board[r] || board[r][c] !== player) break;
             count++;
         }
+        
         if (count >= 4) return true;
     }
     return false;
@@ -65,6 +78,15 @@ const server = http.createServer((req, res) => {
     }
 
     // ==================== API TOURNOI ====================
+
+    // Route pour réinitialiser le tournoi
+    if (path === '/api/reset-tournoi' && req.method === 'POST') {
+        matchs.clear();
+        initTournoi();
+        res.writeHead(200);
+        res.end(JSON.stringify({ success: true, message: 'Tournoi réinitialisé' }));
+        return;
+    }
 
     // Route pour obtenir la liste des matchs
     if (path === '/api/matchs') {
@@ -111,26 +133,71 @@ const server = http.createServer((req, res) => {
                         } else {
                             match.spectateurs++;
                         }
+                        res.writeHead(200);
+                        res.end(JSON.stringify({ success: true, match }));
                     }
 
-                    if (action === 'jouer') {
+                    else if (action === 'jouer') {
+                        // Vérifier que c'est bien le tour du joueur
+                        if (player !== match.currentPlayer) {
+                            res.writeHead(400);
+                            res.end(JSON.stringify({ success: false, error: 'Pas ton tour' }));
+                            return;
+                        }
+
+                        // Vérifier que la partie est en cours
+                        if (match.statut !== 'en-cours') {
+                            res.writeHead(400);
+                            res.end(JSON.stringify({ success: false, error: 'Partie pas en cours' }));
+                            return;
+                        }
+
+                        // Jouer le coup
+                        let rowPlayed = -1;
                         for (let row = 5; row >= 0; row--) {
                             if (!match.board[row][column]) {
                                 match.board[row][column] = player;
-                                match.currentPlayer = player === 'red' ? 'yellow' : 'red';
+                                rowPlayed = row;
                                 break;
                             }
                         }
+                        
+                        if (rowPlayed === -1) {
+                            res.writeHead(400);
+                            res.end(JSON.stringify({ success: false, error: 'Colonne pleine' }));
+                            return;
+                        }
+                        
+                        // Vérifier victoire
+                        const win = checkWin(match.board, rowPlayed, column, player);
+                        
+                        if (win) {
+                            match.statut = "termine";
+                            match.gagnant = player;
+                        } else {
+                            match.currentPlayer = player === 'red' ? 'yellow' : 'red';
+                        }
+                        
+                        match.dernierCoup = { row: rowPlayed, column, player };
+                        
+                        res.writeHead(200);
+                        res.end(JSON.stringify({ success: true, match }));
                     }
 
-                    if (action === 'fin') {
+                    else if (action === 'fin') {
                         match.gagnant = joueur;
                         match.statut = "termine";
+                        res.writeHead(200);
+                        res.end(JSON.stringify({ success: true, match }));
                     }
 
-                    res.writeHead(200);
-                    res.end(JSON.stringify({ success: true, match }));
+                    else {
+                        res.writeHead(400);
+                        res.end(JSON.stringify({ success: false, error: 'Action inconnue' }));
+                    }
+
                 } catch (e) {
+                    console.error(e);
                     res.writeHead(400);
                     res.end(JSON.stringify({ success: false, error: 'Bad request' }));
                 }
@@ -139,7 +206,7 @@ const server = http.createServer((req, res) => {
         }
     }
 
-    // ==================== JEU NORMAL (inchangé) ====================
+    // ==================== JEU NORMAL ====================
     
     // Route pour API game normale
     if (path === '/api/game') {
