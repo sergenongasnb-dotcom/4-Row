@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Match de tournoi</title>
+    <style>
+        body { font-family: system-ui; background: #1a2f3f; color: white; text-align: center; padding: 20px; }
+        .match-container { max-width: 600px; margin: 0 auto; background: #243b4a; padding: 20px; border-radius: 20px; }
+        .info { background: #172d38; padding: 15px; border-radius: 10px; margin: 10px 0; }
+        canvas { width: 100%; background: #1f3a48; border-radius: 10px; }
+        .badge { display: inline-block; padding: 10px; margin: 5px; border-radius: 10px; }
+        .red-badge { background: #e63946; }
+        .yellow-badge { background: #f4d03f; color: black; }
+        .spectateur { opacity: 0.7; }
+    </style>
+</head>
+<body>
+    <div class="match-container">
+        <h1>⚫ Match <span id="matchId"></span> ⚪</h1>
+        
+        <div class="info">
+            <div id="joueurs">
+                <span class="badge red-badge" id="rouge">🔴 Rouge: ⏳</span>
+                <span class="badge yellow-badge" id="jaune">🟡 Jaune: ⏳</span>
+            </div>
+            <div id="statut">En attente des joueurs...</div>
+            <div id="spectateurs">👁️ 0 spectateur(s)</div>
+        </div>
+
+        <canvas id="board" width="560" height="480"></canvas>
+        
+        <div id="message"></div>
+        <div style="margin-top: 20px;">
+            <button onclick="copierLien()">📋 Copier le lien du match</button>
+        </div>
+    </div>
+
+    <script>
+        const matchId = window.location.pathname.split('/')[2];
+        document.getElementById('matchId').textContent = matchId;
+
+        let monRole = null; // 'red', 'yellow', 'spectator'
+        let matchData = null;
+
+        function copierLien() {
+            navigator.clipboard.writeText(window.location.href);
+            alert('Lien copié !');
+        }
+
+        async function refreshMatch() {
+            const res = await fetch(`/api/match?id=${matchId}`);
+            const data = await res.json();
+            if (data.success) {
+                matchData = data.match;
+                updateUI();
+            }
+        }
+
+        function updateUI() {
+            // Mettre à jour les badges
+            document.getElementById('rouge').textContent = `🔴 Rouge: ${matchData.joueurs[0] ? '✅' : '⏳'}`;
+            document.getElementById('jaune').textContent = `🟡 Jaune: ${matchData.joueurs[1] ? '✅' : '⏳'}`;
+            document.getElementById('spectateurs').textContent = `👁️ ${matchData.spectateurs} spectateur(s)`;
+            
+            // Statut
+            if (matchData.statut === 'termine') {
+                document.getElementById('statut').textContent = `🏆 Gagnant: ${matchData.gagnant === 'red' ? 'Rouge' : 'Jaune'}`;
+            } else if (matchData.joueurs[0] && matchData.joueurs[1]) {
+                document.getElementById('statut').textContent = `Partie en cours - Tour: ${matchData.currentPlayer === 'red' ? 'Rouge' : 'Jaune'}`;
+            } else {
+                document.getElementById('statut').textContent = 'En attente des joueurs...';
+            }
+
+            // Dessiner le plateau (même code que avant)
+            drawBoard();
+        }
+
+        function drawBoard() {
+            const canvas = document.getElementById('board');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, 560, 480);
+            // Même code de dessin que dans index.html
+            // ... (copier la fonction drawBoard de index.html)
+        }
+
+        // Déterminer mon rôle
+        async function rejoindre() {
+            const pseudo = prompt("Entre ton nom (ou 'spectateur' pour regarder) :");
+            if (!pseudo) return;
+
+            const res = await fetch(`/api/match?id=${matchId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'rejoindre', joueur: pseudo })
+            });
+            
+            const data = await res.json();
+            if (data.success) {
+                monRole = pseudo;
+                refreshMatch();
+            }
+        }
+
+        // Rafraîchir toutes les 2 secondes
+        rejoindre();
+        setInterval(refreshMatch, 2000);
+    </script>
+</body>
+</html>
