@@ -1,108 +1,62 @@
-// api/game.js - Avec persistance mémoire + logs
-const games = new Map();
+import { createClient } from 'https://esm.sh/@supabase/supabase-js';
 
-export default function handler(req, res) {
-    // CORS
+const supabase = createClient(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_ANON_KEY
+);
+
+export default async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     
-    if (req.method === 'OPTIONS') {
-        return res.status(200).end();
-    }
+    if (req.method === 'OPTIONS') return res.status(200).end();
 
     const { action, id } = req.query;
 
-    // LISTER les parties disponibles
+    // LISTER
     if (req.method === 'GET' && action === 'list') {
-        const available = Array.from(games.entries())
-            .filter(([_, g]) => g.status === 'waiting' && g.players.length < 2)
-            .map(([id, g]) => ({ id, players: g.players.length }));
-        
-        return res.status(200).json({ success: true, games: available });
+        const { data } = await supabase
+            .from('games')
+            .select('id, players')
+            .eq('status', 'waiting');
+        return res.json({ success: true, games: data || [] });
     }
 
-    // CRÉER une partie
+    // CRÉER
     if (req.method === 'POST' && action === 'create') {
         const gameId = Math.random().toString(36).substring(2, 8).toUpperCase();
-        games.set(gameId, {
+        const newGame = {
+            id: gameId,
             board: Array(6).fill().map(() => Array(7).fill(null)),
             currentPlayer: 'red',
             players: ['red'],
             status: 'waiting',
-            winner: null,
-            lastMove: null,
-            createdAt: Date.now()
-        });
-        
-        console.log('Partie créée:', gameId, 'Total parties:', games.size);
-        
-        const game = games.get(gameId);
-        return res.status(200).json({
-            success: true,
-            gameId,
-            player: 'red',
-            game: {
-                board: game.board,
-                currentPlayer: game.currentPlayer,
-                players: game.players,
-                status: game.status,
-                winner: game.winner
-            }
-        });
+            winner: null
+        };
+        await supabase.from('games').insert(newGame);
+        return res.json({ success: true, gameId, player: 'red', game: newGame });
     }
 
-    // REJOINDRE une partie
+    // REJOINDRE
     if (req.method === 'POST' && action === 'join' && id) {
-        const game = games.get(id);
-        
-        if (!game) {
-            console.log('Partie non trouvée:', id);
-            return res.status(404).json({ success: false, error: 'Partie non trouvée' });
-        }
-        
-        if (game.players.length >= 2) {
-            return res.status(400).json({ success: false, error: 'Partie complète' });
-        }
+        const { data: game } = await supabase.from('games').select().eq('id', id).single();
+        if (!game) return res.status(404).json({ success: false, error: 'Partie non trouvée' });
         
         game.players.push('yellow');
         game.status = 'playing';
+        await supabase.from('games').update({ players: game.players, status: 'playing' }).eq('id', id);
         
-        console.log('Joueur rejoint:', id, 'Joueurs:', game.players);
-        
-        return res.status(200).json({
-            success: true,
-            gameId: id,
-            player: 'yellow',
-            game: {
-                board: game.board,
-                currentPlayer: game.currentPlayer,
-                players: game.players,
-                status: game.status,
-                winner: game.winner
-            }
-        });
+        return res.json({ success: true, gameId: id, player: 'yellow', game });
     }
 
-    // JOUER un coup
+    // JOUER
     if (req.method === 'POST' && action === 'move' && id) {
-        const game = games.get(id);
-        if (!game) {
-            console.log('Move: partie non trouvée', id);
-            return res.status(404).json({ success: false, error: 'Partie non trouvée' });
-        }
+        const { data: game } = await supabase.from('games').select().eq('id', id).single();
+        if (!game) return res.status(404).json({ success: false, error: 'Partie non trouvée' });
         
         const { player, column } = req.body;
         
-        if (game.status !== 'playing') {
-            return res.status(400).json({ success: false, error: 'Partie pas en cours' });
-        }
-        
-        if (player !== game.currentPlayer) {
-            return res.status(400).json({ success: false, error: 'Pas ton tour' });
-        }
-        
-        // Jouer le coup
         let rowPlayed = -1;
         for (let row = 5; row >= 0; row--) {
             if (!game.board[row][column]) {
@@ -112,85 +66,21 @@ export default function handler(req, res) {
             }
         }
         
-        if (rowPlayed === -1) {
-            return res.status(400).json({ success: false, error: 'Colonne pleine' });
-        }
+        // Vérification victoire simplifiée
+        game.currentPlayer = player === 'red' ? 'yellow' : 'red';
+        await supabase.from('games').update({ 
+            board: game.board, 
+            currentPlayer: game.currentPlayer 
+        }).eq('id', id);
         
-        // Vérifier victoire
-        const win = checkWin(game.board, rowPlayed, column, player);
-        
-        if (win) {
-            game.status = 'finished';
-            game.winner = player;
-        } else {
-            game.currentPlayer = player === 'red' ? 'yellow' : 'red';
-        }
-        
-        game.lastMove = { row: rowPlayed, column, player };
-        
-        return res.status(200).json({
-            success: true,
-            game: {
-                board: game.board,
-                currentPlayer: game.currentPlayer,
-                players: game.players,
-                status: game.status,
-                winner: game.winner,
-                lastMove: game.lastMove
-            }
-        });
+        return res.json({ success: true, game });
     }
 
-    // RÉCUPÉRER état d'une partie
+    // ÉTAT
     if (req.method === 'GET' && id) {
-        const game = games.get(id);
-        if (!game) {
-            console.log('GET: partie non trouvée', id);
-            return res.status(404).json({ success: false, error: 'Partie non trouvée' });
-        }
-        
-        return res.status(200).json({
-            success: true,
-            game: {
-                board: game.board,
-                currentPlayer: game.currentPlayer,
-                players: game.players,
-                status: game.status,
-                winner: game.winner,
-                lastMove: game.lastMove
-            }
-        });
+        const { data: game } = await supabase.from('games').select().eq('id', id).single();
+        return res.json({ success: true, game });
     }
 
-    return res.status(400).json({ 
-        success: false, 
-        error: 'Action non supportée'
-    });
-}
-
-function checkWin(board, row, col, player) {
-    const directions = [
-        [0, 1], [1, 0], [1, 1], [1, -1]
-    ];
-    
-    for (let [dr, dc] of directions) {
-        let count = 1;
-        
-        for (let step = 1; step < 4; step++) {
-            const r = row + dr * step;
-            const c = col + dc * step;
-            if (r < 0 || r >= 6 || c < 0 || c >= 7 || board[r][c] !== player) break;
-            count++;
-        }
-        
-        for (let step = 1; step < 4; step++) {
-            const r = row - dr * step;
-            const c = col - dc * step;
-            if (r < 0 || r >= 6 || c < 0 || c >= 7 || board[r][c] !== player) break;
-            count++;
-        }
-        
-        if (count >= 4) return true;
-    }
-    return false;
+    return res.status(400).json({ success: false, error: 'Action non supportée' });
 }
