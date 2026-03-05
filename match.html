@@ -10,8 +10,11 @@
         .badge { display: inline-block; padding: 10px; margin: 5px; border-radius: 10px; }
         .red-badge { background: #e63946; }
         .yellow-badge { background: #f4d03f; color: black; }
-        .spectateur { opacity: 0.7; }
         .btn { background: #3f6175; color: white; padding: 10px 20px; border: none; border-radius: 30px; cursor: pointer; margin: 10px; }
+        .winning-cell { box-shadow: 0 0 20px gold; }
+        .message { padding: 10px; margin: 10px; border-radius: 10px; font-weight: bold; }
+        .error { background: #d64f2c; }
+        .success { background: #2d7a4b; }
     </style>
 </head>
 <body>
@@ -25,11 +28,11 @@
             </div>
             <div id="statut">En attente des joueurs...</div>
             <div id="spectateurs">👁️ 0 spectateur(s)</div>
+            <div id="messageBox" class="message" style="display: none;"></div>
         </div>
 
         <canvas id="board" width="560" height="480"></canvas>
         
-        <div id="message"></div>
         <div style="margin-top: 20px;">
             <button class="btn" onclick="copierLien()">📋 Copier le lien du match</button>
         </div>
@@ -39,9 +42,10 @@
         const matchId = window.location.pathname.split('/')[2];
         document.getElementById('matchId').textContent = matchId;
 
-        let monRole = null; // 'red', 'yellow', 'spectator'
+        let monRole = null;
         let matchData = null;
         let monPseudo = null;
+        let winningCells = [];
 
         // Dimensions canvas
         const CANVAS_WIDTH = 560;
@@ -54,10 +58,58 @@
 
         const canvas = document.getElementById('board');
         const ctx = canvas.getContext('2d');
+        const messageBox = document.getElementById('messageBox');
+
+        function showMessage(msg, isError = true) {
+            messageBox.style.display = 'block';
+            messageBox.textContent = msg;
+            messageBox.className = `message ${isError ? 'error' : 'success'}`;
+            setTimeout(() => {
+                messageBox.style.display = 'none';
+            }, 3000);
+        }
 
         function copierLien() {
             navigator.clipboard.writeText(window.location.href);
-            alert('Lien copié !');
+            showMessage('Lien copié !', false);
+        }
+
+        function checkWin(row, col, player) {
+            if (!matchData || !matchData.board) return false;
+            const board = matchData.board;
+            const directions = [
+                { dr: 0, dc: 1 },
+                { dr: 1, dc: 0 },
+                { dr: 1, dc: 1 },
+                { dr: 1, dc: -1 }
+            ];
+
+            for (let { dr, dc } of directions) {
+                let count = 1;
+                let cells = [[row, col]];
+
+                for (let step = 1; step < 4; step++) {
+                    const r = row + dr * step;
+                    const c = col + dc * step;
+                    if (r < 0 || r >= ROWS || c < 0 || c >= COLS || board[r]?.[c] !== player) break;
+                    count++;
+                    cells.push([r, c]);
+                }
+
+                for (let step = 1; step < 4; step++) {
+                    const r = row - dr * step;
+                    const c = col - dc * step;
+                    if (r < 0 || r >= ROWS || c < 0 || c >= COLS || board[r]?.[c] !== player) break;
+                    count++;
+                    cells.push([r, c]);
+                }
+
+                if (count >= 4) {
+                    winningCells = cells.slice(0, 4);
+                    return true;
+                }
+            }
+            return false;
         }
 
         async function refreshMatch() {
@@ -77,10 +129,27 @@
             
             if (matchData.statut === 'termine') {
                 document.getElementById('statut').textContent = `🏆 Gagnant: ${matchData.gagnant === 'red' ? 'Rouge' : 'Jaune'}`;
-            } else if (matchData.joueurs[0] && matchData.joueurs[1]) {
-                document.getElementById('statut').textContent = `Partie en cours - Tour: ${matchData.currentPlayer === 'red' ? 'Rouge' : 'Jaune'}`;
+                canvas.style.pointerEvents = 'none';
+            } else if (matchData.statut === 'en-cours') {
+                if (matchData.joueurs[0] && matchData.joueurs[1]) {
+                    document.getElementById('statut').textContent = `Partie en cours - Tour: ${matchData.currentPlayer === 'red' ? 'Rouge' : 'Jaune'}`;
+                    
+                    // Activer/désactiver les clics selon le rôle
+                    if (monRole && monRole !== 'spectateur') {
+                        if (monRole === matchData.currentPlayer) {
+                            canvas.style.pointerEvents = 'auto';
+                            canvas.style.cursor = 'pointer';
+                        } else {
+                            canvas.style.pointerEvents = 'none';
+                            canvas.style.cursor = 'default';
+                        }
+                    } else {
+                        canvas.style.pointerEvents = 'none';
+                    }
+                }
             } else {
                 document.getElementById('statut').textContent = 'En attente des joueurs...';
+                canvas.style.pointerEvents = 'none';
             }
         }
 
@@ -150,7 +219,84 @@
                         ctx.arc(x-8, y-8, 6, 0, 2 * Math.PI);
                         ctx.fillStyle = 'rgba(255,255,255,0.3)';
                         ctx.fill();
+
+                        // Halo si pion gagnant
+                        if (winningCells.some(cell => cell[0] === row && cell[1] === col)) {
+                            ctx.beginPath();
+                            ctx.arc(x, y, radius+2, 0, 2*Math.PI);
+                            ctx.strokeStyle = '#FFD966';
+                            ctx.lineWidth = 6;
+                            ctx.shadowColor = '#FFB347';
+                            ctx.shadowBlur = 20;
+                            ctx.stroke();
+                            ctx.shadowBlur = 0;
+                        }
                     }
+                }
+            }
+        }
+
+        async function jouerCoup(column) {
+            if (!monRole || monRole === 'spectateur') {
+                showMessage('Tu es spectateur, tu ne peux pas jouer');
+                return;
+            }
+            
+            if (matchData.statut !== 'en-cours') {
+                showMessage('La partie n\'est pas en cours');
+                return;
+            }
+            
+            if (monRole !== matchData.currentPlayer) {
+                showMessage('Ce n\'est pas ton tour !');
+                return;
+            }
+
+            const res = await fetch(`/api/match?id=${matchId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    action: 'jouer', 
+                    player: monRole,
+                    column: column 
+                })
+            });
+            
+            const data = await res.json();
+            if (data.success) {
+                matchData = data.match;
+                
+                // Vérifier si le coup est gagnant
+                if (matchData.dernierCoup) {
+                    const win = checkWin(
+                        matchData.dernierCoup.row,
+                        matchData.dernierCoup.column,
+                        matchData.dernierCoup.player
+                    );
+                    
+                    if (win) {
+                        showMessage('🎉 Victoire !', false);
+                    }
+                }
+                
+                drawBoard();
+                updateUI();
+            } else {
+                showMessage(data.error || 'Erreur en jouant le coup');
+            }
+        }
+
+        function handleCanvasClick(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const mouseX = (e.clientX - rect.left) * scaleX;
+            
+            for (let col = 0; col < COLS; col++) {
+                const leftX = OFFSET_X + col * CELL_SIZE;
+                const rightX = leftX + CELL_SIZE;
+                if (mouseX >= leftX && mouseX <= rightX) {
+                    jouerCoup(col);
+                    break;
                 }
             }
         }
@@ -169,42 +315,18 @@
             const data = await res.json();
             if (data.success) {
                 matchData = data.match;
-                if (matchData.joueurs[0] === pseudo) monRole = 'red';
-                else if (matchData.joueurs[1] === pseudo) monRole = 'yellow';
-                else monRole = 'spectateur';
+                if (matchData.joueurs[0] === pseudo) {
+                    monRole = 'red';
+                    showMessage('Tu es le joueur Rouge !', false);
+                } else if (matchData.joueurs[1] === pseudo) {
+                    monRole = 'yellow';
+                    showMessage('Tu es le joueur Jaune !', false);
+                } else {
+                    monRole = 'spectateur';
+                    showMessage('Tu es spectateur', false);
+                }
                 updateUI();
                 drawBoard();
-            }
-        }
-
-        async function jouerCoup(column) {
-            if (!monRole || monRole === 'spectateur') return;
-            if (matchData.currentPlayer !== monRole) return;
-            if (matchData.statut !== 'en-cours') return;
-
-            const res = await fetch(`/api/match?id=${matchId}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    action: 'jouer', 
-                    player: monRole,
-                    column: column 
-                })
-            });
-        }
-
-        function handleCanvasClick(e) {
-            const rect = canvas.getBoundingClientRect();
-            const scaleX = canvas.width / rect.width;
-            const mouseX = (e.clientX - rect.left) * scaleX;
-            
-            for (let col = 0; col < COLS; col++) {
-                const leftX = OFFSET_X + col * CELL_SIZE;
-                const rightX = leftX + CELL_SIZE;
-                if (mouseX >= leftX && mouseX <= rightX) {
-                    jouerCoup(col);
-                    break;
-                }
             }
         }
 
@@ -212,7 +334,7 @@
 
         // Démarrer
         rejoindre();
-        setInterval(refreshMatch, 2000);
+        setInterval(refreshMatch, 1000);
     </script>
 </body>
 </html>
