@@ -194,3 +194,12 @@ function checkWin(board, row, col, player) {
     }
     return false;
 }
+// Ajoute ces lignes à la fin du fichier
+if (require.main === module) {
+    const http = require('http');
+    const server = http.createServer((req, res) => {
+        // Simule une requête Vercel
+        handler(req, res);
+    });
+    server.listen(process.env.PORT || 3000);
+}
