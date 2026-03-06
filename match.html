@@ -1,12 +1,25 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Match</title>
+    <title>Match de tournoi</title>
+    <style>
+        body { font-family: system-ui; background: #1a2f3f; color: white; text-align: center; padding: 20px; }
+        .match-container { max-width: 600px; margin: 0 auto; background: #243b4a; padding: 20px; border-radius: 20px; }
+        .badge { display: inline-block; padding: 10px; margin: 5px; border-radius: 10px; }
+        .red-badge { background: #e63946; }
+        .yellow-badge { background: #f4d03f; color: black; }
+    </style>
 </head>
 <body>
-    <h1>Match <span id="matchId"></span></h1>
-    <div id="rouge"></div>
-    <div id="jaune"></div>
+    <div class="match-container">
+        <h1>⚫ Match <span id="matchId"></span> ⚪</h1>
+        
+        <div>
+            <span class="badge red-badge" id="rouge">🔴 <span id="redName">attente</span></span>
+            <span class="badge yellow-badge" id="jaune">🟡 <span id="yellowName">attente</span></span>
+        </div>
+        <div id="statut"></div>
+    </div>
 
     <script>
         const matchId = window.location.pathname.split('/')[2];
@@ -16,8 +29,9 @@
             const res = await fetch(`/api/match?id=${matchId}`);
             const data = await res.json();
             if (data.success) {
-                document.getElementById('rouge').textContent = `Rouge: ${data.match.joueurs[0] || 'attente'}`;
-                document.getElementById('jaune').textContent = `Jaune: ${data.match.joueurs[1] || 'attente'}`;
+                document.getElementById('redName').textContent = data.match.joueurs[0] || 'attente';
+                document.getElementById('yellowName').textContent = data.match.joueurs[1] || 'attente';
+                document.getElementById('statut').textContent = `Statut: ${data.match.statut}`;
             }
         }
 
