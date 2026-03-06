@@ -8,22 +8,92 @@ const games = new Map();
 // Stockage des matchs de tournoi
 const matchs = new Map();
 
-// Créer les 8 matchs de 8ème au démarrage
+// Créer tous les matchs du tournoi
 function initTournoi() {
+    // Huitièmes de finale (8 matchs)
     for (let i = 1; i <= 8; i++) {
         const matchId = `8EME${i}`;
         matchs.set(matchId, {
             id: matchId,
             joueurs: [null, null],
             gagnant: null,
-            statut: "en-attente", // en-attente, en-cours, termine
+            statut: "en-attente",
             board: Array(6).fill().map(() => Array(7).fill(null)),
             currentPlayer: 'red',
             dernierCoup: null,
-            spectateurs: 0
+            spectateurs: 0,
+            phase: "huitieme"
         });
     }
-    console.log("🏆 Tournoi initialisé avec 8 matchs");
+
+    // Quarts de finale (4 matchs)
+    for (let i = 1; i <= 4; i++) {
+        const matchId = `QUART${i}`;
+        matchs.set(matchId, {
+            id: matchId,
+            joueurs: [null, null],
+            gagnant: null,
+            statut: "en-attente",
+            board: Array(6).fill().map(() => Array(7).fill(null)),
+            currentPlayer: 'red',
+            dernierCoup: null,
+            spectateurs: 0,
+            phase: "quart",
+            precedent: [`8EME${i*2-1}`, `8EME${i*2}`] // Quels matchs nourrissent ce quart
+        });
+    }
+
+    // Demi-finales (2 matchs)
+    for (let i = 1; i <= 2; i++) {
+        const matchId = `DEMI${i}`;
+        matchs.set(matchId, {
+            id: matchId,
+            joueurs: [null, null],
+            gagnant: null,
+            statut: "en-attente",
+            board: Array(6).fill().map(() => Array(7).fill(null)),
+            currentPlayer: 'red',
+            dernierCoup: null,
+            spectateurs: 0,
+            phase: "demi",
+            precedent: [`QUART${i*2-1}`, `QUART${i*2}`]
+        });
+    }
+
+    // Petite finale (3ème place)
+    matchs.set("TROISIEME", {
+        id: "TROISIEME",
+        joueurs: [null, null],
+        gagnant: null,
+        statut: "en-attente",
+        board: Array(6).fill().map(() => Array(7).fill(null)),
+        currentPlayer: 'red',
+        dernierCoup: null,
+        spectateurs: 0,
+        phase: "petite-finale",
+        precedent: ["DEMI1", "DEMI2"] // Les perdants des demies
+    });
+
+    // Finale
+    matchs.set("FINALE", {
+        id: "FINALE",
+        joueurs: [null, null],
+        gagnant: null,
+        statut: "en-attente",
+        board: Array(6).fill().map(() => Array(7).fill(null)),
+        currentPlayer: 'red',
+        dernierCoup: null,
+        spectateurs: 0,
+        phase: "finale",
+        precedent: ["DEMI1", "DEMI2"] // Les gagnants des demies
+    });
+
+    console.log("🏆 Tournoi initialisé avec :");
+    console.log("   - 8 huitièmes");
+    console.log("   - 4 quarts");
+    console.log("   - 2 demies");
+    console.log("   - 1 petite finale");
+    console.log("   - 1 finale");
 }
 
 initTournoi();
@@ -92,9 +162,10 @@ const server = http.createServer((req, res) => {
     if (path === '/api/matchs') {
         const listeMatchs = Array.from(matchs.entries()).map(([id, match]) => ({
             id: match.id,
-            joueurs: match.joueurs.map(j => j ? '✅' : '⏳'),
+            joueurs: match.joueurs,
             gagnant: match.gagnant,
-            statut: match.statut
+            statut: match.statut,
+            phase: match.phase
         }));
         
         res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -104,6 +175,21 @@ const server = http.createServer((req, res) => {
 
     // Route pour un match spécifique
     if (path === '/api/match' && query.id) {
+        // Si le match n'existe pas, le créer (pour les matchs exhibition)
+        if (!matchs.has(query.id)) {
+            matchs.set(query.id, {
+                id: query.id,
+                joueurs: [null, null],
+                gagnant: null,
+                statut: "en-attente",
+                board: Array(6).fill().map(() => Array(7).fill(null)),
+                currentPlayer: 'red',
+                dernierCoup: null,
+                spectateurs: 0,
+                phase: "exhibition"
+            });
+        }
+
         const match = matchs.get(query.id);
         if (!match) {
             res.writeHead(404);
@@ -125,6 +211,15 @@ const server = http.createServer((req, res) => {
                     const { action, joueur, player, column } = JSON.parse(body);
 
                     if (action === 'rejoindre') {
+                        // Vérifier si le joueur est déjà dans le match
+                        if (match.joueurs[0] === joueur || match.joueurs[1] === joueur) {
+                            // C'est le même joueur qui revient
+                            res.writeHead(200);
+                            res.end(JSON.stringify({ success: true, match }));
+                            return;
+                        }
+
+                        // Nouveau joueur
                         if (match.joueurs[0] === null) {
                             match.joueurs[0] = joueur;
                         } else if (match.joueurs[1] === null) {
@@ -133,6 +228,7 @@ const server = http.createServer((req, res) => {
                         } else {
                             match.spectateurs++;
                         }
+                        
                         res.writeHead(200);
                         res.end(JSON.stringify({ success: true, match }));
                     }
@@ -174,6 +270,11 @@ const server = http.createServer((req, res) => {
                         if (win) {
                             match.statut = "termine";
                             match.gagnant = player;
+                            
+                            // Si c'est un match de tournoi, propager aux phases suivantes
+                            if (match.phase && match.phase !== "exhibition") {
+                                propagerGagnant(match.id, player);
+                            }
                         } else {
                             match.currentPlayer = player === 'red' ? 'yellow' : 'red';
                         }
@@ -203,6 +304,25 @@ const server = http.createServer((req, res) => {
                 }
             });
             return;
+        }
+    }
+
+    // Fonction pour propager le gagnant aux phases suivantes
+    function propagerGagnant(matchId, player) {
+        for (const [id, match] of matchs.entries()) {
+            if (match.precedent && match.precedent.includes(matchId)) {
+                // C'est le match suivant
+                if (player === 'red') {
+                    match.joueurs[0] = matchs.get(matchId).joueurs[0];
+                } else {
+                    match.joueurs[1] = matchs.get(matchId).joueurs[1];
+                }
+                
+                // Si les deux joueurs sont là, démarrer
+                if (match.joueurs[0] && match.joueurs[1]) {
+                    match.statut = "en-cours";
+                }
+            }
         }
     }
 
@@ -376,7 +496,7 @@ const server = http.createServer((req, res) => {
         return;
     }
 
-    // Page match de tournoi
+    // Page match de tournoi (pour n'importe quel ID)
     if (path.startsWith('/match/')) {
         fs.readFile('./match.html', (err, data) => {
             if (err) {
