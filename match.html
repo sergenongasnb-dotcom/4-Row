@@ -7,14 +7,15 @@
         .match-container { max-width: 600px; margin: 0 auto; background: #243b4a; padding: 20px; border-radius: 20px; }
         .info { background: #172d38; padding: 15px; border-radius: 10px; margin: 10px 0; }
         canvas { width: 100%; background: #1f3a48; border-radius: 10px; cursor: pointer; }
-        .badge { display: inline-block; padding: 10px; margin: 5px; border-radius: 10px; }
-        .red-badge { background: #e63946; }
+        .badge { display: inline-block; padding: 10px 20px; margin: 5px; border-radius: 30px; font-weight: bold; }
+        .red-badge { background: #e63946; color: white; }
         .yellow-badge { background: #f4d03f; color: black; }
+        .spectator-badge { background: #3f6175; color: white; }
         .btn { background: #3f6175; color: white; padding: 10px 20px; border: none; border-radius: 30px; cursor: pointer; margin: 10px; }
-        .winning-cell { box-shadow: 0 0 20px gold; }
         .message { padding: 10px; margin: 10px; border-radius: 10px; font-weight: bold; }
         .error { background: #d64f2c; }
         .success { background: #2d7a4b; }
+        .player-name { font-size: 1.2rem; margin-left: 5px; }
     </style>
 </head>
 <body>
@@ -22,12 +23,18 @@
         <h1>⚫ Match <span id="matchId"></span> ⚪</h1>
         
         <div class="info">
-            <div id="joueurs">
-                <span class="badge red-badge" id="rouge">🔴 Rouge: ⏳</span>
-                <span class="badge yellow-badge" id="jaune">🟡 Jaune: ⏳</span>
+            <div id="joueurs" style="display: flex; justify-content: space-around; align-items: center;">
+                <div class="badge red-badge" id="rouge">
+                    🔴 <span id="redName">En attente</span>
+                </div>
+                <div style="font-size: 1.5rem; font-weight: bold;">VS</div>
+                <div class="badge yellow-badge" id="jaune">
+                    🟡 <span id="yellowName">En attente</span>
+                </div>
             </div>
-            <div id="statut">En attente des joueurs...</div>
-            <div id="spectateurs">👁️ 0 spectateur(s)</div>
+            <div id="statut" style="margin: 15px 0; font-size: 1.2rem;">En attente des joueurs...</div>
+            <div id="spectateurs">👁️ <span id="spectatorCount">0</span> spectateur(s)</div>
+            <div id="monRole"></div>
             <div id="messageBox" class="message" style="display: none;"></div>
         </div>
 
@@ -59,6 +66,10 @@
         const canvas = document.getElementById('board');
         const ctx = canvas.getContext('2d');
         const messageBox = document.getElementById('messageBox');
+        const redNameSpan = document.getElementById('redName');
+        const yellowNameSpan = document.getElementById('yellowName');
+        const spectatorCountSpan = document.getElementById('spectatorCount');
+        const monRoleDiv = document.getElementById('monRole');
 
         function showMessage(msg, isError = true) {
             messageBox.style.display = 'block';
@@ -123,16 +134,32 @@
         }
 
         function updateUI() {
-            document.getElementById('rouge').textContent = `🔴 Rouge: ${matchData.joueurs[0] ? '✅' : '⏳'}`;
-            document.getElementById('jaune').textContent = `🟡 Jaune: ${matchData.joueurs[1] ? '✅' : '⏳'}`;
-            document.getElementById('spectateurs').textContent = `👁️ ${matchData.spectateurs || 0} spectateur(s)`;
+            // Afficher les noms des joueurs
+            redNameSpan.textContent = matchData.joueurs[0] || 'En attente';
+            yellowNameSpan.textContent = matchData.joueurs[1] || 'En attente';
+            
+            // Afficher le nombre de spectateurs
+            spectatorCountSpan.textContent = matchData.spectateurs || 0;
+            
+            // Afficher mon rôle
+            if (monRole) {
+                if (monRole === 'red') {
+                    monRoleDiv.innerHTML = '🎮 Tu es <span class="badge red-badge">Joueur Rouge</span>';
+                } else if (monRole === 'yellow') {
+                    monRoleDiv.innerHTML = '🎮 Tu es <span class="badge yellow-badge">Joueur Jaune</span>';
+                } else {
+                    monRoleDiv.innerHTML = '👁️ Tu es <span class="badge spectator-badge">Spectateur</span>';
+                }
+            }
             
             if (matchData.statut === 'termine') {
-                document.getElementById('statut').textContent = `🏆 Gagnant: ${matchData.gagnant === 'red' ? 'Rouge' : 'Jaune'}`;
+                const gagnant = matchData.gagnant === 'red' ? redNameSpan.textContent : yellowNameSpan.textContent;
+                document.getElementById('statut').textContent = `🏆 Gagnant: ${gagnant}`;
                 canvas.style.pointerEvents = 'none';
             } else if (matchData.statut === 'en-cours') {
                 if (matchData.joueurs[0] && matchData.joueurs[1]) {
-                    document.getElementById('statut').textContent = `Partie en cours - Tour: ${matchData.currentPlayer === 'red' ? 'Rouge' : 'Jaune'}`;
+                    const joueurCourant = matchData.currentPlayer === 'red' ? redNameSpan.textContent : yellowNameSpan.textContent;
+                    document.getElementById('statut').textContent = `Partie en cours - Tour de ${joueurCourant}`;
                     
                     // Activer/désactiver les clics selon le rôle
                     if (monRole && monRole !== 'spectateur') {
@@ -275,7 +302,8 @@
                     );
                     
                     if (win) {
-                        showMessage('🎉 Victoire !', false);
+                        const gagnant = matchData.gagnant === 'red' ? 'Rouge' : 'Jaune';
+                        showMessage(`🎉 Victoire du joueur ${gagnant} !`, false);
                     }
                 }
                 
@@ -305,6 +333,12 @@
             const pseudo = prompt("Entre ton nom :");
             if (!pseudo) return;
 
+            // Vérifier si c'est un spectateur
+            let role = 'joueur';
+            if (pseudo.toLowerCase() === 'spectateur') {
+                role = 'spectateur';
+            }
+
             monPseudo = pseudo;
             const res = await fetch(`/api/match?id=${matchId}`, {
                 method: 'POST',
@@ -317,13 +351,13 @@
                 matchData = data.match;
                 if (matchData.joueurs[0] === pseudo) {
                     monRole = 'red';
-                    showMessage('Tu es le joueur Rouge !', false);
+                    showMessage(`Bienvenue ${pseudo}, tu es le joueur Rouge !`, false);
                 } else if (matchData.joueurs[1] === pseudo) {
                     monRole = 'yellow';
-                    showMessage('Tu es le joueur Jaune !', false);
+                    showMessage(`Bienvenue ${pseudo}, tu es le joueur Jaune !`, false);
                 } else {
                     monRole = 'spectateur';
-                    showMessage('Tu es spectateur', false);
+                    showMessage(`Bienvenue ${pseudo}, tu es spectateur`, false);
                 }
                 updateUI();
                 drawBoard();
