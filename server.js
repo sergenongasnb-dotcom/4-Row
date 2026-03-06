@@ -92,7 +92,7 @@ const server = http.createServer((req, res) => {
     if (path === '/api/matchs') {
         const listeMatchs = Array.from(matchs.entries()).map(([id, match]) => ({
             id: match.id,
-            joueurs: match.joueurs.map(j => j ? '✅' : '⏳'),
+            joueurs: match.joueurs, // ⬅️ ENVOIE LES VRAIS NOMS (ou null)
             gagnant: match.gagnant,
             statut: match.statut
         }));
