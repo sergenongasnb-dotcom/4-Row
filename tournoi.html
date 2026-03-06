@@ -3,432 +3,82 @@
 <head>
     <title>Tournoi - Tableau</title>
     <style>
-        body { 
-            font-family: system-ui; 
-            background: #1a2f3f; 
-            color: white; 
-            padding: 20px; 
-            margin: 0;
-        }
-        
-        h1 { 
-            text-align: center; 
-            color: #ede7d9;
-            text-shadow: 0 4px 0 #0e1a21;
-            font-size: 2.5rem;
-            margin-bottom: 40px;
-        }
-        
-        .tournoi-container { 
-            max-width: 1200px; 
-            margin: 0 auto; 
-        }
-        
-        .phase-title {
-            text-align: center;
-            font-size: 2rem;
-            margin: 40px 0 20px;
-            color: #f5e3b3;
-            text-transform: uppercase;
-            letter-spacing: 4px;
-        }
-        
-        .phase-subtitle {
-            text-align: center;
-            font-size: 1.2rem;
-            margin: -10px 0 20px;
-            color: #9bbfd0;
-            font-style: italic;
-        }
-        
-        .match-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 20px;
-            margin: 20px 0;
-        }
-        
-        .match-card { 
-            background: #243b4a; 
-            padding: 20px; 
-            border-radius: 20px; 
-            text-align: center;
-            box-shadow: 0 10px 0 #10212b, 0 15px 20px black;
-            border-bottom: 3px solid #3f6175;
-            transition: transform 0.1s;
-        }
-        
-        .match-card:hover {
-            transform: translateY(-5px);
-        }
-        
-        .match-card h3 { 
-            margin: 0 0 15px; 
-            color: #f5e3b3;
-            font-size: 1.5rem;
-            text-shadow: 0 2px 0 #7f5f30;
-        }
-        
-        .joueurs-container {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin: 15px 0;
-            gap: 10px;
-        }
-        
-        .joueur {
-            flex: 1;
-            padding: 12px;
-            border-radius: 30px;
-            font-weight: bold;
-            font-size: 1.1rem;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        
-        .joueur-rouge { 
-            background: #e63946; 
-            color: white;
-            box-shadow: 0 5px 0 #921a26;
-        }
-        
-        .joueur-jaune { 
-            background: #f4d03f; 
-            color: black;
-            box-shadow: 0 5px 0 #b37b2e;
-        }
-        
-        .vs {
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: #9bbfd0;
-            margin: 0 5px;
-        }
-        
-        .statut {
-            margin: 15px 0;
-            padding: 8px;
-            border-radius: 30px;
-            font-size: 1rem;
-        }
-        
-        .en-attente { background: #3f6175; }
-        .en-cours { background: #d64f2c; animation: pulse 1.5s infinite; }
-        .termine { background: #2d7a4b; }
-        
-        .gagnant {
-            margin-top: 10px;
-            padding: 10px;
-            background: #2d7a4b;
-            border-radius: 30px;
-            font-weight: bold;
-            font-size: 1.1rem;
-        }
-        
-        .perdant-info {
-            margin-top: 5px;
-            padding: 5px;
-            background: #3f6175;
-            border-radius: 20px;
-            font-size: 0.9rem;
-            color: #e0e0e0;
-        }
-        
-        .btn-match {
-            display: inline-block;
-            margin-top: 15px;
-            padding: 10px 20px;
-            background: #3f6175;
-            color: white;
-            text-decoration: none;
-            border-radius: 30px;
-            font-weight: bold;
-            border-bottom: 3px solid #1f3643;
-            transition: all 0.1s;
-        }
-        
-        .btn-match:active {
-            transform: translateY(3px);
-            border-bottom-width: 1px;
-        }
-        
-        .btn-match:hover {
-            background: #4b7188;
-        }
-        
-        .empty {
-            text-align: center;
-            padding: 40px;
-            background: #172d38;
-            border-radius: 30px;
-            font-size: 1.2rem;
-            color: #8ba9b9;
-        }
-        
-        .exhibition-section {
-            margin-top: 60px;
-            padding: 30px;
-            background: #1e3340;
-            border-radius: 40px;
-            text-align: center;
-        }
-        
-        .exhibition-title {
-            font-size: 1.8rem;
-            color: #f5e3b3;
-            margin-bottom: 20px;
-        }
-        
-        .exhibition-input {
-            padding: 15px 20px;
-            border-radius: 40px;
-            border: none;
-            background: #132b36;
-            color: white;
-            font-size: 1.2rem;
-            text-align: center;
-            margin-right: 10px;
-            border-bottom: 3px solid #4b6d80;
-        }
-        
-        .exhibition-btn {
-            padding: 15px 30px;
-            background: #d64f2c;
-            color: white;
-            border: none;
-            border-radius: 40px;
-            font-size: 1.2rem;
-            font-weight: bold;
-            cursor: pointer;
-            border-bottom: 5px solid #833c1e;
-        }
-        
-        .exhibition-btn:active {
-            transform: translateY(3px);
-            border-bottom-width: 2px;
-        }
-        
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.7; }
-            100% { opacity: 1; }
-        }
-        
-        footer {
-            text-align: center;
-            margin-top: 50px;
-            color: #6b8b9c;
-        }
-        
-        .refresh-btn {
-            display: block;
-            margin: 20px auto;
-            padding: 15px 30px;
-            background: #d64f2c;
-            color: white;
-            border: none;
-            border-radius: 40px;
-            font-size: 1.2rem;
-            font-weight: bold;
-            cursor: pointer;
-            border-bottom: 5px solid #833c1e;
-        }
-        
-        .refresh-btn:active {
-            transform: translateY(3px);
-            border-bottom-width: 2px;
-        }
-        
-        .reset-btn {
-            background: #3f6175;
-            border-bottom-color: #1f3643;
-            margin-left: 10px;
-        }
+        body { font-family: system-ui; background: #1a2f3f; color: white; padding: 20px; }
+        h1 { text-align: center; }
+        .tournoi-container { max-width: 1000px; margin: 0 auto; }
+        .huitieme { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin: 40px 0; }
+        .match-card { background: #243b4a; padding: 15px; border-radius: 15px; text-align: center; }
+        .match-card h3 { margin: 0 0 10px; color: #f5e3b3; }
+        .joueurs { display: flex; justify-content: space-around; margin: 10px 0; }
+        .rouge { color: #ffb3ba; }
+        .jaune { color: #fff2b5; }
+        .gagnant { background: #2d7a4b; padding: 5px; border-radius: 10px; margin-top: 10px; }
+        .en-attente { opacity: 0.6; }
+        .quarts { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin: 40px 0; }
+        .demies { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin: 40px 0; }
+        .finale { display: grid; grid-template-columns: 1fr; gap: 20px; margin: 40px 0; }
     </style>
 </head>
 <body>
     <div class="tournoi-container">
         <h1>🏆 TOURNOI 4 EN RANGÉE 🏆</h1>
         
-        <div style="text-align: center;">
-            <button class="refresh-btn" onclick="refreshTournoi()">🔄 Actualiser le tableau</button>
-            <button class="refresh-btn reset-btn" onclick="resetTournoi()">🔄 Réinitialiser le tournoi</button>
-        </div>
-        
-        <div class="phase-title">⚔️ HUITIÈMES DE FINALE ⚔️</div>
-        <div id="huitieme" class="match-grid">
-            <div class="empty">Chargement des matchs...</div>
+        <div id="huitieme" class="huitieme">
+            <!-- Les 8èmes apparaîtront ici -->
         </div>
 
-        <div class="phase-title">⚔️ QUARTS DE FINALE ⚔️</div>
-        <div class="phase-subtitle">Les vainqueurs des huitièmes s'affrontent</div>
-        <div id="quarts" class="match-grid">
-            <div class="empty">En attente des résultats des huitièmes</div>
+        <div id="quarts" class="quarts">
+            <!-- Quarts de finale -->
         </div>
 
-        <div class="phase-title">⚔️ DEMI-FINALES ⚔️</div>
-        <div class="phase-subtitle">Les vainqueurs des quarts s'affrontent</div>
-        <div id="demies" class="match-grid">
-            <div class="empty">En attente des résultats des quarts</div>
+        <div id="demies" class="demies">
+            <!-- Demi-finales -->
         </div>
 
-        <div class="phase-title">⚔️ FINALE & TROISIÈME PLACE ⚔️</div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-            <div>
-                <div class="phase-subtitle">🏆 Match pour la 3ème place</div>
-                <div id="troisieme" class="match-grid" style="grid-template-columns: 1fr;">
-                    <div class="empty">En attente des résultats des demies</div>
-                </div>
-            </div>
-            <div>
-                <div class="phase-subtitle">👑 GRANDE FINALE</div>
-                <div id="finale" class="match-grid" style="grid-template-columns: 1fr;">
-                    <div class="empty">En attente des résultats des demies</div>
-                </div>
-            </div>
+        <div id="finale" class="finale">
+            <!-- Finale -->
         </div>
-
-        <div class="exhibition-section">
-            <div class="exhibition-title">🎮 MATCH EXHIBITION 🎮</div>
-            <p style="margin-bottom: 20px; color: #9bbfd0;">Créez un match personnalisé avec n'importe quel nom</p>
-            <input type="text" id="exhibitionId" class="exhibition-input" placeholder="ex: AMICAL, TEST, 123" value="AMICAL">
-            <button class="exhibition-btn" onclick="creerMatchExhibition()">Créer le match</button>
-        </div>
-        
-        <footer>Tournoi en direct - Mise à jour automatique toutes les 3 secondes</footer>
     </div>
 
     <script>
         async function refreshTournoi() {
-            try {
-                const res = await fetch('/api/matchs');
-                const data = await res.json();
-                
-                if (data.success) {
-                    afficherMatchs(data.matchs);
-                }
-            } catch (e) {
-                console.error('Erreur chargement tournoi:', e);
-            }
-        }
-
-        async function resetTournoi() {
-            if (confirm('Êtes-vous sûr de vouloir réinitialiser tout le tournoi ?')) {
-                try {
-                    const res = await fetch('/api/reset-tournoi', { method: 'POST' });
-                    const data = await res.json();
-                    if (data.success) {
-                        alert('Tournoi réinitialisé !');
-                        refreshTournoi();
-                    }
-                } catch (e) {
-                    alert('Erreur lors de la réinitialisation');
-                }
-            }
-        }
-
-        function creerMatchExhibition() {
-            const id = document.getElementById('exhibitionId').value.trim().toUpperCase();
-            if (id) {
-                window.open(`/match/${id}`, '_blank');
+            const res = await fetch('/api/matchs');
+            const data = await res.json();
+            
+            if (data.success) {
+                afficherMatchs(data.matchs);
             }
         }
 
         function afficherMatchs(matchs) {
             // Filtrer par phase
-            const huitieme = matchs.filter(m => m.phase === 'huitieme');
-            const quarts = matchs.filter(m => m.phase === 'quart');
-            const demies = matchs.filter(m => m.phase === 'demi');
-            const troisieme = matchs.filter(m => m.phase === 'petite-finale');
-            const finale = matchs.filter(m => m.phase === 'finale');
-            
-            // Trier par numéro
-            huitieme.sort((a, b) => a.id.localeCompare(b.id));
-            quarts.sort((a, b) => a.id.localeCompare(b.id));
-            demies.sort((a, b) => a.id.localeCompare(b.id));
-            
-            // Afficher chaque phase
-            document.getElementById('huitieme').innerHTML = huitieme.map(m => createMatchCard(m)).join('');
-            document.getElementById('quarts').innerHTML = quarts.map(m => createMatchCard(m)).join('');
-            document.getElementById('demies').innerHTML = demies.map(m => createMatchCard(m)).join('');
-            document.getElementById('troisieme').innerHTML = troisieme.map(m => createMatchCard(m, true)).join('');
-            document.getElementById('finale').innerHTML = finale.map(m => createMatchCard(m, true)).join('');
-        }
+            const huitieme = matchs.filter(m => m.id.startsWith('8EME'));
+            const quarts = matchs.filter(m => m.id.startsWith('QUART'));
+            const demies = matchs.filter(m => m.id.startsWith('DEMI'));
+            const finale = matchs.filter(m => m.id.startsWith('FINALE'));
 
-        function createMatchCard(match, isFinal = false) {
-            const joueurRouge = match.joueurs[0] || 'En attente';
-            const joueurJaune = match.joueurs[1] || 'En attente';
-            
-            // Déterminer le statut
-            let statutTexte = '';
-            let statutClass = '';
-            
-            switch(match.statut) {
-                case 'en-attente':
-                    statutTexte = '⏳ En attente';
-                    statutClass = 'en-attente';
-                    break;
-                case 'en-cours':
-                    statutTexte = '🎮 Partie en cours';
-                    statutClass = 'en-cours';
-                    break;
-                case 'termine':
-                    statutTexte = '🏁 Terminé';
-                    statutClass = 'termine';
-                    break;
-                default:
-                    statutTexte = '⏳ En attente';
-                    statutClass = 'en-attente';
-            }
-            
-            // Déterminer le gagnant
-            let gagnantHtml = '';
-            let perdantHtml = '';
-            
-            if (match.statut === 'termine' && match.gagnant) {
-                const nomGagnant = match.gagnant === 'red' ? joueurRouge : joueurJaune;
-                const nomPerdant = match.gagnant === 'red' ? joueurJaune : joueurRouge;
-                gagnantHtml = `<div class="gagnant">🏆 Gagnant: ${nomGagnant}</div>`;
-                
-                // Pour la petite finale, on montre aussi le perdant
-                if (match.phase === 'petite-finale') {
-                    perdantHtml = `<div class="perdant-info">4ème: ${nomPerdant}</div>`;
-                } else if (match.phase === 'finale') {
-                    perdantHtml = `<div class="perdant-info">Finaliste: ${nomPerdant}</div>`;
-                }
-            }
-            
-            return `
-                <div class="match-card ${match.statut}">
-                    <h3>${match.phase === 'petite-finale' ? '🥉 3ÈME PLACE' : 
-                           match.phase === 'finale' ? '👑 FINALE' : 
-                           `⚔️ ${match.id}`}</h3>
-                    <div class="joueurs-container">
-                        <div class="joueur joueur-rouge" title="${joueurRouge}">
-                            🔴 ${joueurRouge}
-                        </div>
-                        <span class="vs">VS</span>
-                        <div class="joueur joueur-jaune" title="${joueurJaune}">
-                            🟡 ${joueurJaune}
-                        </div>
+            // Afficher 8èmes
+            document.getElementById('huitieme').innerHTML = huitieme.map(m => `
+                <div class="match-card ${m.statut}">
+                    <h3>⚔️ ${m.id}</h3>
+                    <div class="joueurs">
+                        <span class="rouge">${m.joueurs[0]}</span>
+                        <span>VS</span>
+                        <span class="jaune">${m.joueurs[1]}</span>
                     </div>
-                    <div class="statut ${statutClass}">
-                        ${statutTexte}
+                    ${m.gagnant ? `<div class="gagnant">🏆 Gagnant: ${m.gagnant === 'red' ? 'Rouge' : 'Jaune'}</div>` : ''}
+                    <div style="margin-top: 10px;">
+                        <a href="/match/${m.id}" target="_blank">Voir le match</a>
                     </div>
-                    ${gagnantHtml}
-                    ${perdantHtml}
-                    <a href="/match/${match.id}" class="btn-match" target="_blank">
-                        ${match.statut === 'termine' ? '📺 Voir le replay' : '🎮 Rejoindre le match'}
-                    </a>
                 </div>
-            `;
+            `).join('');
+
+            // Même chose pour quarts, demies, finale
         }
 
-        // Rafraîchir toutes les 3 secondes
+        // Rafraîchir toutes les 5 secondes
         refreshTournoi();
-        setInterval(refreshTournoi, 3000);
+        setInterval(refreshTournoi, 5000);
     </script>
 </body>
 </html>
